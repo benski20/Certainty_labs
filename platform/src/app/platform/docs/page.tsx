@@ -445,20 +445,29 @@ export default function DocsPage() {
         <section id="quickstart" className="mb-14 scroll-mt-24">
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">Quickstart</h2>
           <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            Train on built-in data, then rerank — with your candidates or with your LLM generating them.
+            Use the hosted Certainty API — no local server required.
           </p>
           <div className="space-y-3">
             <div>
-              <p className="text-xs font-medium text-neutral-500 mb-1.5">1. Start server</p>
-              <CodeBlock code={`uvicorn api.main:app --reload`} lang="bash" />
+              <p className="text-xs font-medium text-neutral-500 mb-1.5">1. Set environment</p>
+              <CodeBlock
+                code={`export CERTAINTY_BASE_URL="${BASE}"\nexport CERTAINTY_API_KEY="ck_..."  # from /api-keys`}
+                lang="bash"
+              />
             </div>
             <div>
               <p className="text-xs font-medium text-neutral-500 mb-1.5">2. Train (built-in GSM8K)</p>
-              <CodeBlock code={`import requests\nr = requests.post("${BASE}/train", json={"epochs": 10}).json()\nprint(r["best_val_acc"], r["model_path"])`} lang="python" />
+              <CodeBlock
+                code={`import requests\nr = requests.post("${BASE}/train", json={"epochs": 10}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["best_val_acc"], r["model_path"])`}
+                lang="python"
+              />
             </div>
             <div>
               <p className="text-xs font-medium text-neutral-500 mb-1.5">3. Rerank (your candidates or your LLM)</p>
-              <CodeBlock code={`# Option A: you provide candidates\nbest = requests.post("${BASE}/rerank", json={"candidates": ["A", "B", "C"], "prompt": q}).json()\n# Option B: API generates with your LLM then reranks\nbest = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}).json()\nprint(best["best_candidate"])`} lang="python" />
+              <CodeBlock
+                code={`# Option A: you provide candidates\nbest = requests.post("${BASE}/rerank", json={"candidates": ["A", "B", "C"], "prompt": q}, headers={"Authorization": "Bearer ck_..."}).json()\n# Option B: API generates with your LLM then reranks\nbest = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(best["best_candidate"])`}
+                lang="python"
+              />
             </div>
           </div>
         </section>
@@ -467,18 +476,18 @@ export default function DocsPage() {
         <section id="sdk" className="mb-14 scroll-mt-24">
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">Python SDK</h2>
           <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">certaintylabs</code> — typed sync/async clients. Supports <code className="text-[13px] bg-neutral-100 px-1 rounded">tokenizer_name</code> (Qwen/Llama), <code className="text-[13px] bg-neutral-100 px-1 rounded">openai_api_key</code>, and <code className="text-[13px] bg-neutral-100 px-1 rounded">hf_model</code>+<code className="text-[13px] bg-neutral-100 px-1 rounded">hf_token</code> for rerank.
+            <code className="text-[13px] bg-neutral-100 px-1 rounded">certaintylabs</code> — typed sync/async clients for the hosted API. Supports <code className="text-[13px] bg-neutral-100 px-1 rounded">tokenizer_name</code> (Qwen/Llama), <code className="text-[13px] bg-neutral-100 px-1 rounded">openai_api_key</code>, and <code className="text-[13px] bg-neutral-100 px-1 rounded">hf_model</code>+<code className="text-[13px] bg-neutral-100 px-1 rounded">hf_token</code> for rerank; no local server needed.
           </p>
           <CodeBlock code={`pip install certaintylabs`} lang="bash" />
           <div className="mt-3 space-y-3">
             <CodeBlock
-              code={`from certaintylabs import Certainty\nclient = Certainty()  # or base_url=..., api_key=...\n# Train (built-in or your data)\nresult = client.train(epochs=10)\nresult = client.train_with_data(samples, epochs=10)\nresult = client.train_from_file("data.jsonl")\n# Rerank (your candidates or your LLM)\nbest = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)`}
+              code={`from certaintylabs import Certainty\n\n# Reads CERTAINTY_BASE_URL (${BASE}) and CERTAINTY_API_KEY from env\nclient = Certainty()\n\n# Train (built-in or your data)\nresult = client.train(epochs=10)\nresult = client.train_with_data(samples, epochs=10)\nresult = client.train_from_file("data.jsonl")\n\n# Rerank (your candidates or your LLM)\nbest = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)`}
               lang="python"
             />
             <CodeBlock code={`from certaintylabs import AsyncCertainty\nasync with AsyncCertainty() as c:\n    r = await c.train(epochs=5)\n    b = await c.rerank(prompt=q, openai_api_key="sk-...")`} lang="python" />
           </div>
           <p className="text-xs text-neutral-500 mt-3">
-            Env: <code className="bg-neutral-100 px-1 rounded">CERTAINTY_BASE_URL</code>, <code className="bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code>. Errors: <code className="bg-neutral-100 px-1 rounded">APIError</code>, <code className="bg-neutral-100 px-1 rounded">ConnectionError</code>.
+            Env: <code className="bg-neutral-100 px-1 rounded">CERTAINTY_BASE_URL</code> (defaults to {BASE}), <code className="bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code>. Errors: <code className="bg-neutral-100 px-1 rounded">APIError</code>, <code className="bg-neutral-100 px-1 rounded">ConnectionError</code>.
           </p>
         </section>
 
