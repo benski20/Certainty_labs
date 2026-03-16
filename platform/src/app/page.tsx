@@ -102,7 +102,7 @@ export default function Home() {
       <Navbar />
       <main>
         {/* Hero */}
-        <section className="relative pt-32 md:pt-36 pb-16 px-6 overflow-hidden">
+        <section className="relative pt-40 md:pt-48 pb-16 px-6 overflow-hidden">
           <GridPattern
             width={40}
             height={40}
