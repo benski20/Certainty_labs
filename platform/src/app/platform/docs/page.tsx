@@ -296,13 +296,7 @@ export default function DocsPage() {
         <a href="/platform/docs" className="text-lg font-semibold text-neutral-900 tracking-tight">
           Certainty API
         </a>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50/50 px-3 py-1.5 text-sm text-neutral-500 w-64 max-w-[240px]">
-            <Search className="w-4 h-4 shrink-0 text-neutral-400" />
-            <span>Search documentation...</span>
-            <kbd className="ml-auto text-[10px] font-mono text-neutral-400 border border-neutral-200 rounded px-1">⌘K</kbd>
-          </div>
-        </div>
+        <div className="flex items-center gap-4" />
       </header>
 
       <div className="flex flex-1">
