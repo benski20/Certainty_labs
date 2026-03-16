@@ -93,7 +93,7 @@ class HuggingFaceInferenceSampler(LLMSampler):
                         results.append(out["generated_text"].strip())
                     else:
                         results.append("")
-            except (urllib.error.HTTPError, OSError) as e:
+            except urllib.error.HTTPError:
                 results.append("")
         return results
 
