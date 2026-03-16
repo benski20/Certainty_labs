@@ -1,0 +1,40 @@
+[project]
+name = "certainty-labs"
+version = "0.1.0"
+description = "Constraint enforcement runtime for production LLMs using Energy-Based Models"
+requires-python = ">=3.9"
+
+dependencies = [
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.29.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "openai>=1.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0.0",
+    "supabase>=2.0.0",
+    "jsonlines>=4.0.0",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.0",
+    "plotly>=5.18.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+demo = ["streamlit>=1.33.0"]
+dev = ["pytest>=8.0.0", "pytest-asyncio", "black", "ruff"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]

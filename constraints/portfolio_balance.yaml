@@ -1,0 +1,20 @@
+name: portfolio_balance
+version: "1.0"
+description: Portfolio weights must sum to 1.0, all non-negative, max 40% per asset
+output_format: json
+parse_error_penalty: 100.0
+rules:
+  - type: sum_equals
+    field: weights.*
+    equals: 1.0
+    tolerance: 0.001
+    penalty_weight: 10.0
+  - type: range
+    field: weights.*
+    min: 0.0
+    max: 0.40
+    penalty_weight: 5.0
+  - type: count
+    field: weights
+    at_most: 5
+    penalty_weight: 2.0

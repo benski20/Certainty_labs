@@ -1,0 +1,22 @@
+name: medication_dosage
+version: "1.0"
+description: Pediatric dosage must respect weight-adjusted safety bounds
+output_format: json
+parse_error_penalty: 100.0
+rules:
+  - type: conditional
+    if_field: patient_age_years
+    if_op: "<"
+    if_value: 12
+    then_field: dosage_mg
+    then_max: 200.0
+    penalty_weight: 15.0
+  - type: range
+    field: dosage_mg
+    min: 0.0
+    max: 1000.0
+    penalty_weight: 20.0
+  - type: enum
+    field: route
+    values: ["oral", "IV", "IM", "subcutaneous"]
+    penalty_weight: 5.0

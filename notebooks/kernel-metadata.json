@@ -1,0 +1,13 @@
+{
+  "id": "bensliv/certainty-labs-eorm-training",
+  "title": "Certainty Labs EORM Training",
+  "code_file": "kaggle_remote.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["bensliv/certainty-eorm-data"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
