@@ -110,26 +110,6 @@ export default function ResearchPage() {
             ))}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="mt-16 p-8 bg-neutral-50 rounded-lg border border-neutral-100"
-          >
-            <h3 className="text-lg font-semibold">Architecture overview</h3>
-            <div className="mt-4 font-mono text-sm text-neutral-600 leading-relaxed">
-              <pre>{`TransEBM Architecture
-─────────────────────────
-Model       Transformer from scratch (not finetuned)
-Loss        Bradley-Terry: softplus(E_pos - E_neg)
-Pooling     CLS token at position 0
-Head        LayerNorm → Linear → GELU → Linear
-Tokenizer   GPT-2 (tokenizer only, no pretrained weights)
-Optimizer   AdamW (lr=5e-5), cosine warmup
-Training    FP16 AMP, gradient clipping
-Parameters  ~50M`}</pre>
-            </div>
-          </motion.div>
         </div>
       </main>
       <Footer />
