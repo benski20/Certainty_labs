@@ -130,7 +130,7 @@ export default function Home() {
                 variants={fadeIn}
                 className="text-sm md:text-base text-neutral-500 max-w-2xl mx-auto leading-relaxed"
               >
-                Certainty Labs enforces constraints, aligns outputs to human preference, and scores every response — without retraining your model.
+                The API for developers, labs, and enterprises to ensure every output meets the highest standard.
               </motion.p>
               <motion.div
                 variants={fadeInUp}
