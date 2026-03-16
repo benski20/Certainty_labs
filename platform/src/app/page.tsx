@@ -102,7 +102,7 @@ export default function Home() {
       <Navbar />
       <main>
         {/* Hero */}
-        <section className="relative pt-80 md:pt-40 pb-16 px-6 overflow-hidden">
+        <section className="relative pt-500 md:pt-60 pb-16 px-6 overflow-hidden">
           <GridPattern
             width={40}
             height={40}
@@ -122,15 +122,15 @@ export default function Home() {
             >
               <motion.h1
                 variants={fadeIn}
-                className="text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance"
+                className="font-serif text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance text-neutral-900"
               >
                 Give Your LLM a Better Filter
               </motion.h1>
               <motion.p
                 variants={fadeIn}
-                className="text-sm md:text-base text-neutral-500 max-w-2xl mx-auto leading-relaxed"
+                className="font-serif text-base md:text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed"
               >
-                The API for developers, labs, and enterprises to ensure every output meets the highest standard.
+                The training API for developers, labs, and enterprises to ensure every output meets the highest standard.
               </motion.p>
               <motion.div
                 variants={fadeInUp}
