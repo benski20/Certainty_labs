@@ -1,15 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PLATFORM_PATHS = new Set(['/platform/docs'])
-
 function isSupabaseConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 }
 
 function requiresAuth(pathname: string) {
   if (!pathname.startsWith('/platform')) return false
-  if (PUBLIC_PLATFORM_PATHS.has(pathname)) return false
   return true
 }
 
