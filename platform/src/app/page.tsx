@@ -124,7 +124,7 @@ export default function Home() {
                 variants={fadeIn}
                 className="text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance"
               >
-                Make Your LLM Provably Right
+                Give Your LLM a Better Filter
               </motion.h1>
               <motion.p
                 variants={fadeIn}
