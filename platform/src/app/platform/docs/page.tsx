@@ -26,7 +26,8 @@ interface Endpoint {
 
 // ── Data ────────────────────────────────────────────────────────────
 
-const BASE = 'http://localhost:8000'
+const DEFAULT_API_BASE = 'https://certainty-labs.onrender.com'
+const BASE = process.env.NEXT_PUBLIC_CERTAINTY_BASE_URL || DEFAULT_API_BASE
 
 const endpoints: Endpoint[] = [
   {
