@@ -4,33 +4,45 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
+import { GridPattern } from '@/components/ui/grid-pattern'
+import { Logos3 } from '@/components/blocks/logos3'
+import { Feature } from '@/components/ui/feature-section-with-bento-grid'
 import { ArrowRight, Shield, Zap, Layers, Globe } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const easeOutSmooth = [0.25, 0.46, 0.45, 0.94] as const
 
 const fadeIn = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6 },
+  transition: { duration: 0.7, ease: easeOutSmooth },
+}
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: easeOutSmooth },
 }
 
 const stagger = {
-  animate: { transition: { staggerChildren: 0.1 } },
+  animate: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
 }
 
 const steps = [
   {
     step: '01',
-    title: 'Define your rules',
-    desc: 'Describe the constraints your outputs must satisfy — ranges, sums, conditions, allowed values, and more.',
+    title: 'Provide data',
+    desc: 'Send labeled examples that capture when your system is correct or incorrect.',
   },
   {
     step: '02',
-    title: 'Train a scorer',
-    desc: 'A lightweight model learns to distinguish compliant outputs from non-compliant ones. Trains in minutes on a single GPU.',
+    title: 'Train an energy model',
+    desc: 'We fit a TransEBM scorer so lower energy means more reliable, constraint-satisfying outputs.',
   },
   {
     step: '03',
-    title: 'Enforce at inference',
-    desc: 'Every candidate output is scored automatically. The most compliant response is selected and returned.',
+    title: 'Score or rerank',
+    desc: 'Call the API to score or rerank LLM outputs and return the best candidate in milliseconds.',
   },
 ]
 
@@ -90,62 +102,72 @@ export default function Home() {
       <Navbar />
       <main>
         {/* Hero */}
-        <section className="pt-32 pb-24 px-6">
-          <div className="max-w-3xl mx-auto">
-            <motion.div {...fadeIn}>
-              <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] text-balance">
-                Constraint-guaranteed outputs for production AI
-              </h1>
-              <p className="text-xl text-neutral-500 mt-8 max-w-2xl leading-relaxed">
-                Enforce hard constraints on any language model&apos;s output.
-                Define your rules, and our system ensures every response
-                satisfies them — through a simple API.
-              </p>
-              <div className="flex flex-wrap items-center gap-4 mt-10">
+        <section className="relative pt-32 md:pt-36 pb-16 px-6 overflow-hidden">
+          <GridPattern
+            width={40}
+            height={40}
+            x={-1}
+            y={-1}
+            className={cn(
+              "[mask-image:radial-gradient(600px_ellipse_at_50%_0%,white_40%,transparent_70%)]",
+              "inset-x-0 inset-y-[-20%] h-[140%]",
+            )}
+          />
+          <div className="relative z-10 max-w-3xl mx-auto">
+            <motion.div
+              initial="initial"
+              animate="animate"
+              variants={stagger}
+              className="space-y-8 text-center"
+            >
+              <motion.h1
+                variants={fadeIn}
+                className="text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance"
+              >
+                Make Your LLM Provably Right
+              </motion.h1>
+              <motion.p
+                variants={fadeIn}
+                className="text-sm md:text-base text-neutral-500 max-w-2xl mx-auto leading-relaxed"
+              >
+                Certainty Labs enforces constraints, aligns outputs to human preference, and scores every response — without retraining your model.
+              </motion.p>
+              <motion.div
+                variants={fadeInUp}
+                className="flex flex-wrap items-center justify-center gap-4"
+              >
                 <Link
                   href="/platform"
-                  className="inline-flex items-center gap-2 bg-neutral-900 text-white px-6 py-3 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors"
+                  className="inline-flex items-center gap-2 bg-neutral-900 text-white px-6 py-3 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors duration-300"
                 >
                   Get started <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   href="/research"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors px-6 py-3"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-300 px-6 py-3"
                 >
                   Read the research
                 </Link>
-              </div>
+              </motion.div>
             </motion.div>
           </div>
         </section>
 
-        {/* Compatible models */}
-        <section className="py-10 border-y border-neutral-100">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="flex items-center justify-center gap-6 md:gap-10 flex-wrap text-neutral-400 text-sm">
-              <span>GPT-4o</span>
-              <span className="text-neutral-200 hidden md:inline">&middot;</span>
-              <span>Claude</span>
-              <span className="text-neutral-200 hidden md:inline">&middot;</span>
-              <span>Llama 3</span>
-              <span className="text-neutral-200 hidden md:inline">&middot;</span>
-              <span>Mistral</span>
-              <span className="text-neutral-200 hidden md:inline">&middot;</span>
-              <span>Any LLM</span>
-            </div>
-          </div>
+        {/* Logos / models banner */}
+        <section className="border-y border-neutral-100">
+          <Logos3 />
         </section>
 
         {/* How it works */}
-        <section className="py-24 px-6">
+        <section className="py-16 px-6">
           <div className="max-w-4xl mx-auto">
             <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: easeOutSmooth }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight font-mono">
                 How it works
               </h2>
               <p className="text-neutral-500 mt-3 max-w-xl">
@@ -155,14 +177,19 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              className="grid md:grid-cols-3 gap-10 mt-16"
+              className="grid md:grid-cols-3 gap-8 mt-10 items-stretch"
               variants={stagger}
               initial="initial"
               whileInView="animate"
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5, ease: easeOutSmooth }}
             >
               {steps.map((item) => (
-                <motion.div key={item.step} variants={fadeIn}>
+                <motion.div
+                  key={item.step}
+                  variants={fadeIn}
+                  className="flex flex-col justify-start"
+                >
                   <span className="text-xs font-mono text-neutral-400">
                     {item.step}
                   </span>
@@ -178,57 +205,19 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Why Certainty */}
-        <section className="py-24 px-6 bg-neutral-950 text-white">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-                Built for production
-              </h2>
-              <p className="text-neutral-400 mt-3 max-w-xl leading-relaxed">
-                A constraint enforcement layer that sits between your model and
-                your users. No changes to your existing stack.
-              </p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-2 gap-8 mt-14">
-              {features.map((f) => (
-                <motion.div
-                  key={f.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="flex gap-4"
-                >
-                  <div className="p-2.5 bg-neutral-800 rounded-lg h-fit">
-                    <f.icon className="w-4 h-4 text-neutral-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold">{f.title}</h3>
-                    <p className="text-sm text-neutral-400 mt-1 leading-relaxed">
-                      {f.desc}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+        {/* Platform bento grid */}
+        <section className="border-t border-neutral-100">
+          <Feature />
         </section>
 
         {/* API */}
         <section className="py-24 px-6" id="api">
           <div className="max-w-3xl mx-auto">
             <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: easeOutSmooth }}
             >
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
                 Simple, powerful API
@@ -239,36 +228,35 @@ export default function Home() {
               </p>
             </motion.div>
 
-            <div className="mt-12 space-y-3">
+            <motion.div
+              className="mt-10 space-y-3"
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: "-40px" }}
+              variants={stagger}
+              transition={{ ease: easeOutSmooth }}
+            >
               {[
                 {
                   method: 'POST',
-                  path: '/compile',
-                  desc: 'Turn constraint definitions into a scoring function',
-                },
-                {
-                  method: 'POST',
                   path: '/train',
-                  desc: 'Train a scoring model from your data',
+                  desc: 'Train a TransEBM scorer on your data or the built-in dataset',
                 },
                 {
                   method: 'POST',
-                  path: '/infer/rerank',
-                  desc: 'Score candidates and return the best output',
+                  path: '/rerank',
+                  desc: 'Score candidates and return the lowest-energy (best) output',
                 },
                 {
                   method: 'POST',
-                  path: '/pipeline',
-                  desc: 'End-to-end: compile, train, and rerank in one call',
+                  path: '/score',
+                  desc: 'Get raw energy scores for any outputs without reranking',
                 },
               ].map((ep) => (
                 <motion.div
                   key={ep.path}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="flex items-center gap-4 p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors"
+                  variants={fadeInUp}
+                  className="flex items-center gap-4 p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors duration-300"
                 >
                   <span className="text-xs font-mono font-medium bg-neutral-100 text-neutral-600 px-2 py-1 rounded">
                     {ep.method}
@@ -281,13 +269,13 @@ export default function Home() {
                   </span>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
+              transition={{ duration: 0.5, ease: easeOutSmooth }}
               className="mt-6"
             >
               <Link
@@ -304,10 +292,10 @@ export default function Home() {
         <section className="py-24 px-6 border-t border-neutral-100">
           <div className="max-w-4xl mx-auto">
             <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: easeOutSmooth }}
             >
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
                 Research
@@ -318,18 +306,22 @@ export default function Home() {
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-4 mt-12">
+            <motion.div
+              className="grid md:grid-cols-2 gap-4 mt-12"
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: "-40px" }}
+              variants={stagger}
+              transition={{ ease: easeOutSmooth }}
+            >
               {papers.map((paper) => (
                 <motion.a
                   key={paper.title}
                   href={paper.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="block p-5 border border-neutral-200 rounded-lg hover:border-neutral-400 transition-colors group"
+                  variants={fadeInUp}
+                  className="block p-5 border border-neutral-200 rounded-lg hover:border-neutral-400 transition-colors duration-300 group"
                 >
                   <div className="flex items-baseline gap-2">
                     <h3 className="font-semibold font-mono">{paper.title}</h3>
@@ -342,13 +334,19 @@ export default function Home() {
                   </p>
                 </motion.a>
               ))}
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* CTA */}
         <section className="py-24 px-6 bg-neutral-50">
-          <div className="max-w-2xl mx-auto text-center">
+          <motion.div
+            className="max-w-2xl mx-auto text-center"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: easeOutSmooth }}
+          >
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
               Start enforcing constraints
             </h2>
@@ -356,15 +354,21 @@ export default function Home() {
               Get an API key and integrate constraint enforcement into your
               pipeline in minutes.
             </p>
-            <div className="flex items-center justify-center gap-4 mt-8">
+            <motion.div
+              className="flex items-center justify-center gap-4 mt-8"
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15, ease: easeOutSmooth }}
+            >
               <Link
                 href="/platform"
-                className="inline-flex items-center gap-2 bg-neutral-900 text-white px-6 py-3 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors"
+                className="inline-flex items-center gap-2 bg-neutral-900 text-white px-6 py-3 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors duration-300"
               >
                 Get started <ArrowRight className="w-4 h-4" />
               </Link>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
       </main>
       <Footer />
