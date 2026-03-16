@@ -1,3 +1,4 @@
+// In production (e.g. Vercel), set NEXT_PUBLIC_API_URL to your deployed API URL so the app does not try localhost.
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export async function apiRequest<T>(

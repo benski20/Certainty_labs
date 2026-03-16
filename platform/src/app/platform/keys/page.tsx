@@ -48,7 +48,17 @@ export default function ApiKeysPage() {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : String(e)
           const isNetwork = msg === 'Failed to fetch'
-          setError(isNetwork ? `Cannot reach API at ${API_BASE}. Is the server running? (Start with: uvicorn api.main:app --reload)` : msg)
+          const isProductionUsingLocalhost =
+            typeof window !== 'undefined' &&
+            !window.location.hostname.includes('localhost') &&
+            API_BASE.includes('localhost')
+          setError(
+            isNetwork && isProductionUsingLocalhost
+              ? 'The app is configured to use the local API (localhost). In production, set NEXT_PUBLIC_API_URL to your API URL in Vercel: Project → Settings → Environment Variables. Then redeploy.'
+              : isNetwork
+                ? `Cannot reach API at ${API_BASE}. Is the server running? (Start with: uvicorn api.main:app --reload)`
+                : msg
+          )
         }
       })
       .finally(() => {
@@ -80,7 +90,17 @@ export default function ApiKeysPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const isNetwork = msg === 'Failed to fetch'
-      setError(isNetwork ? `Cannot reach API at ${API_BASE}. Is the server running?` : msg)
+      const isProductionUsingLocalhost =
+        typeof window !== 'undefined' &&
+        !window.location.hostname.includes('localhost') &&
+        API_BASE.includes('localhost')
+      setError(
+        isNetwork && isProductionUsingLocalhost
+          ? 'The app is configured to use the local API (localhost). In production, set NEXT_PUBLIC_API_URL to your API URL in Vercel: Project → Settings → Environment Variables. Then redeploy.'
+          : isNetwork
+            ? `Cannot reach API at ${API_BASE}. Is the server running?`
+            : msg
+      )
     } finally {
       setCreating(false)
     }
