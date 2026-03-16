@@ -46,6 +46,12 @@ export function Navbar() {
               API
             </Link>
             <Link
+              href="/auth?next=/platform"
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
               href="/platform"
               className="text-sm bg-neutral-900 text-white px-4 py-2 rounded-md hover:bg-neutral-800 transition-colors"
             >
@@ -84,6 +90,13 @@ export function Navbar() {
                 className="text-sm text-neutral-600"
               >
                 API
+              </Link>
+              <Link
+                href="/auth?next=/platform"
+                onClick={() => setMobileOpen(false)}
+                className="text-sm text-neutral-600"
+              >
+                Sign in
               </Link>
               <Link
                 href="/platform"

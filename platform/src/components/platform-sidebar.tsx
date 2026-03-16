@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   Key,
   Activity,
@@ -9,7 +10,10 @@ import {
   BarChart3,
   CreditCard,
   BookOpen,
+  LogOut,
 } from 'lucide-react'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { isSupabaseConfigured } from '@/lib/supabase/env'
 
 const navigation = [
   { name: 'API docs', href: '/platform/docs', icon: BookOpen },
@@ -22,6 +26,40 @@ const navigation = [
 
 export function PlatformSidebar() {
   const pathname = usePathname()
+  const [email, setEmail] = useState('user@example.com')
+  const [loadingUser, setLoadingUser] = useState(false)
+  const authEnabled = isSupabaseConfigured()
+
+  useEffect(() => {
+    if (!authEnabled) return
+    let cancelled = false
+    const supabase = createSupabaseBrowserClient()
+    setLoadingUser(true)
+
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!cancelled && data.user?.email) {
+          setEmail(data.user.email)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingUser(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [authEnabled])
+
+  async function signOut() {
+    if (!authEnabled) return
+    const supabase = createSupabaseBrowserClient()
+    await supabase.auth.signOut()
+    window.location.href = '/auth'
+  }
+
+  const initial = email?.[0]?.toUpperCase() || 'U'
 
   return (
     <aside className="w-52 shrink-0 border-r border-neutral-200 bg-white flex flex-col min-h-screen">
@@ -56,17 +94,26 @@ export function PlatformSidebar() {
       <div className="px-4 py-4 border-t border-neutral-100">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-neutral-200 rounded-full flex items-center justify-center text-[10px] font-semibold text-neutral-600">
-            U
+            {initial}
           </div>
           <div className="overflow-hidden">
             <p className="text-[13px] font-medium text-neutral-900 truncate leading-tight">
-              User
+              {loadingUser ? 'Loading...' : 'User'}
             </p>
             <p className="text-[11px] text-neutral-400 truncate leading-tight">
-              user@example.com
+              {email}
             </p>
           </div>
         </div>
+        {authEnabled && (
+          <button
+            onClick={signOut}
+            className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-neutral-200 px-2 py-1.5 text-[12px] text-neutral-600 hover:text-neutral-900 hover:border-neutral-300 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign out
+          </button>
+        )}
       </div>
     </aside>
   )

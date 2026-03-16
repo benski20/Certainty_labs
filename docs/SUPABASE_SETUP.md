@@ -1,6 +1,10 @@
-# Supabase setup for API key storage
+# Supabase setup for auth + API key storage
 
-Use **Supabase** (Postgres) for persistent API keys in production. If you don’t set Supabase env vars, the API uses local file storage (`certainty_workspace/api_keys.json`) for development.
+Use **Supabase** for:
+- **Platform user authentication** (Supabase Auth)
+- **Persistent API key storage** for the FastAPI backend
+
+If you don’t set Supabase env vars for the API, it uses local file storage (`certainty_workspace/api_keys.json`) for development.
 
 ## 1. Create a Supabase project
 
@@ -29,6 +33,18 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 
 The API loads the root `.env` at startup, so no extra export is needed. Restart the API after editing `.env`. New keys are stored in Supabase; existing keys in `api_keys.json` are not migrated automatically (create new keys via `POST /api-keys` after switching).
 
-## 4. Local development without Supabase
+## 4. Configure platform authentication (Next.js)
+
+Copy `platform/.env.example` to `platform/.env.local` and set:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+```
+
+Then restart the platform app (`npm run dev` inside `platform`).  
+The app now provides `/auth` (sign in / sign up), protects `/platform/*` routes, and supports sign-out from the platform sidebar.
+
+## 5. Local development without Supabase
 
 Omit `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. The API will use `certainty_workspace/api_keys.json` so you can develop without a Supabase project.
