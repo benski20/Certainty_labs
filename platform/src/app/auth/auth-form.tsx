@@ -4,6 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
+const AUTH_TIMEOUT_MS = 15000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. If using Supabase free tier, your project may be paused—try again in a minute.')), ms),
+    ),
+  ])
+}
+
 export function AuthForm({ nextPath }: { nextPath: string }) {
   const router = useRouter()
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
@@ -25,11 +36,15 @@ export function AuthForm({ nextPath }: { nextPath: string }) {
       const supabase = createSupabaseBrowserClient()
 
       if (mode === 'sign-in') {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        })
+        const { error: signInError } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          }),
+          AUTH_TIMEOUT_MS,
+        )
         if (signInError) throw signInError
+        setLoading(false)
         router.push(nextPath || '/platform')
         router.refresh()
         return
@@ -40,11 +55,14 @@ export function AuthForm({ nextPath }: { nextPath: string }) {
           ? undefined
           : `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo },
-      })
+      const { error: signUpError } = await withTimeout(
+        supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo },
+        }),
+        AUTH_TIMEOUT_MS,
+      )
       if (signUpError) throw signUpError
 
       setSuccess('Account created. Check your email to confirm, then sign in.')

@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Copy, Eye, EyeOff, Trash2, Check, AlertCircle } from 'lucide-react'
 import { api, API_BASE } from '@/lib/api'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
 
 interface KeyInfo {
   id: string
@@ -36,34 +35,25 @@ export default function ApiKeysPage() {
   const [visible, setVisible] = useState<Set<string>>(new Set())
   const [copied, setCopied] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
+
+  const router = useRouter()
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return
-    let cancelled = false
-    createSupabaseBrowserClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (!cancelled && data.user?.id) setUserId(data.user.id)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isSupabaseConfigured() && userId === null) return
     let cancelled = false
     setLoading(true)
     setError(null)
     api.keys
-      .list(userId ?? undefined)
+      .list()
       .then((res) => {
         if (!cancelled) setKeys(res.keys)
       })
       .catch((e) => {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : String(e)
+          if (msg.includes('Sign in required')) {
+            router.push('/auth?next=/platform/keys')
+            return
+          }
           const isNetwork = msg === 'Failed to fetch'
           const isProductionUsingLocalhost =
             typeof window !== 'undefined' &&
@@ -84,16 +74,14 @@ export default function ApiKeysPage() {
     return () => {
       cancelled = true
     }
-  }, [userId])
-
-  const canCreate = !isSupabaseConfigured() || userId !== null
+  }, [])
 
   async function createKey() {
-    if (!newKeyName.trim() || creating || !canCreate) return
+    if (!newKeyName.trim() || creating) return
     setCreating(true)
     setError(null)
     try {
-      const res = await api.keys.create(newKeyName.trim(), userId ?? undefined)
+      const res = await api.keys.create(newKeyName.trim())
       setNewKeyReveal({
         id: res.id,
         name: res.name,
@@ -108,6 +96,10 @@ export default function ApiKeysPage() {
       setShowCreate(false)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('Sign in required')) {
+        router.push('/auth?next=/platform/keys')
+        return
+      }
       const isNetwork = msg === 'Failed to fetch'
       const isProductionUsingLocalhost =
         typeof window !== 'undefined' &&
@@ -130,11 +122,16 @@ export default function ApiKeysPage() {
     setDeletingId(id)
     setError(null)
     try {
-      await api.keys.delete(id, userId ?? undefined)
+      await api.keys.delete(id)
       setKeys((prev) => prev.filter((k) => k.id !== id))
       if (newKeyReveal?.id === id) setNewKeyReveal(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('Sign in required')) {
+        router.push('/auth?next=/platform/keys')
+        return
+      }
+      setError(msg)
     } finally {
       setDeletingId(null)
     }
@@ -228,7 +225,7 @@ export default function ApiKeysPage() {
             />
             <button
               onClick={() => createKey()}
-              disabled={!newKeyName.trim() || creating || !canCreate}
+              disabled={!newKeyName.trim() || creating}
               className="bg-neutral-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
             >
               {creating ? 'Creating…' : 'Create'}

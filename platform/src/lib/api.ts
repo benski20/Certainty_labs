@@ -3,9 +3,9 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:800
 
 export async function apiRequest<T>(
   endpoint: string,
-  options?: RequestInit & { userId?: string },
+  options?: RequestInit & { userId?: string; baseUrl?: string },
 ): Promise<T> {
-  const { userId, ...rest } = options ?? {}
+  const { userId, baseUrl = API_BASE, ...rest } = options ?? {}
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(rest.headers as Record<string, string>),
@@ -13,7 +13,8 @@ export async function apiRequest<T>(
   if (userId) {
     headers['X-User-ID'] = userId
   }
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const url = baseUrl ? `${baseUrl}${endpoint}` : endpoint
+  const res = await fetch(url, {
     ...rest,
     headers,
   })
@@ -78,18 +79,19 @@ export const api = {
   health: () => apiRequest<HealthResponse>('/health'),
 
   keys: {
-    create: (name: string, userId?: string) =>
-      apiRequest<CreateKeyResponse>('/api-keys', {
+    // Use proxy (/api/keys) so the server attaches X-User-ID from the Supabase session.
+    create: (name: string) =>
+      apiRequest<CreateKeyResponse>('/api/keys', {
         method: 'POST',
         body: JSON.stringify({ name: name || 'default' }),
-        userId,
+        baseUrl: '',
       }),
-    list: (userId?: string) =>
-      apiRequest<ListKeysResponse>('/api-keys', { userId }),
-    delete: (id: string, userId?: string) =>
-      apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api-keys/${id}`, {
+    list: () =>
+      apiRequest<ListKeysResponse>('/api/keys', { baseUrl: '' }),
+    delete: (id: string) =>
+      apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api/keys/${id}`, {
         method: 'DELETE',
-        userId,
+        baseUrl: '',
       }),
   },
 
