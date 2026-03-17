@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Plus, Copy, Eye, EyeOff, Trash2, Check, AlertCircle } from 'lucide-react'
 import { api, API_BASE } from '@/lib/api'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { isSupabaseConfigured } from '@/lib/supabase/env'
 
 interface KeyInfo {
   id: string
@@ -34,13 +36,28 @@ export default function ApiKeysPage() {
   const [visible, setVisible] = useState<Set<string>>(new Set())
   const [copied, setCopied] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) return
+    let cancelled = false
+    createSupabaseBrowserClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!cancelled && data.user?.id) setUserId(data.user.id)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isSupabaseConfigured() && userId === null) return
     let cancelled = false
     setLoading(true)
     setError(null)
     api.keys
-      .list()
+      .list(userId ?? undefined)
       .then((res) => {
         if (!cancelled) setKeys(res.keys)
       })
@@ -67,14 +84,16 @@ export default function ApiKeysPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [userId])
+
+  const canCreate = !isSupabaseConfigured() || userId !== null
 
   async function createKey() {
-    if (!newKeyName.trim() || creating) return
+    if (!newKeyName.trim() || creating || !canCreate) return
     setCreating(true)
     setError(null)
     try {
-      const res = await api.keys.create(newKeyName.trim())
+      const res = await api.keys.create(newKeyName.trim(), userId ?? undefined)
       setNewKeyReveal({
         id: res.id,
         name: res.name,
@@ -111,7 +130,7 @@ export default function ApiKeysPage() {
     setDeletingId(id)
     setError(null)
     try {
-      await api.keys.delete(id)
+      await api.keys.delete(id, userId ?? undefined)
       setKeys((prev) => prev.filter((k) => k.id !== id))
       if (newKeyReveal?.id === id) setNewKeyReveal(null)
     } catch (e) {
@@ -209,7 +228,7 @@ export default function ApiKeysPage() {
             />
             <button
               onClick={() => createKey()}
-              disabled={!newKeyName.trim() || creating}
+              disabled={!newKeyName.trim() || creating || !canCreate}
               className="bg-neutral-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
             >
               {creating ? 'Creating…' : 'Create'}

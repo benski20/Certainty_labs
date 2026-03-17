@@ -31,12 +31,18 @@ class FileKeyStore:
         keys.append(record)
         _file_save(keys)
 
-    def list_all(self) -> List[dict]:
-        return _file_load()
-
-    def delete_by_id(self, key_id: str) -> bool:
+    def list_all(self, user_id: str | None = None) -> List[dict]:
         keys = _file_load()
-        filtered = [k for k in keys if k["id"] != key_id]
+        if user_id is None:
+            return keys
+        return [k for k in keys if k.get("user_id") == user_id]
+
+    def delete_by_id(self, key_id: str, user_id: str | None = None) -> bool:
+        keys = _file_load()
+        if user_id is None:
+            filtered = [k for k in keys if k["id"] != key_id]
+        else:
+            filtered = [k for k in keys if not (k["id"] == key_id and k.get("user_id") == user_id)]
         if len(filtered) == len(keys):
             return False
         _file_save(filtered)
@@ -68,15 +74,22 @@ class SupabaseKeyStore:
                 "key_hash": record["key_hash"],
                 "prefix": record["prefix"],
                 "created_at": record["created_at"],
+                "user_id": record.get("user_id"),
             }
         ).execute()
 
-    def list_all(self) -> List[dict]:
-        resp = self._client.table(_TABLE_NAME).select("id,name,key_hash,prefix,created_at").execute()
+    def list_all(self, user_id: str | None = None) -> List[dict]:
+        query = self._client.table(_TABLE_NAME).select("id,name,key_hash,prefix,created_at,user_id")
+        if user_id is not None:
+            query = query.eq("user_id", user_id)
+        resp = query.execute()
         return list(resp.data) if resp.data else []
 
-    def delete_by_id(self, key_id: str) -> bool:
-        resp = self._client.table(_TABLE_NAME).delete().eq("id", key_id).execute()
+    def delete_by_id(self, key_id: str, user_id: str | None = None) -> bool:
+        query = self._client.table(_TABLE_NAME).delete().eq("id", key_id)
+        if user_id is not None:
+            query = query.eq("user_id", user_id)
+        resp = query.execute()
         return len(resp.data) > 0 if resp.data else False
 
     def exists_hash(self, key_hash: str) -> bool:

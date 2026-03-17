@@ -3,14 +3,19 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:800
 
 export async function apiRequest<T>(
   endpoint: string,
-  options?: RequestInit,
+  options?: RequestInit & { userId?: string },
 ): Promise<T> {
+  const { userId, ...rest } = options ?? {}
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(rest.headers as Record<string, string>),
+  }
+  if (userId) {
+    headers['X-User-ID'] = userId
+  }
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
+    ...rest,
+    headers,
   })
 
   if (!res.ok) {
@@ -73,15 +78,18 @@ export const api = {
   health: () => apiRequest<HealthResponse>('/health'),
 
   keys: {
-    create: (name: string) =>
+    create: (name: string, userId?: string) =>
       apiRequest<CreateKeyResponse>('/api-keys', {
         method: 'POST',
         body: JSON.stringify({ name: name || 'default' }),
+        userId,
       }),
-    list: () => apiRequest<ListKeysResponse>('/api-keys'),
-    delete: (id: string) =>
+    list: (userId?: string) =>
+      apiRequest<ListKeysResponse>('/api-keys', { userId }),
+    delete: (id: string, userId?: string) =>
       apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api-keys/${id}`, {
         method: 'DELETE',
+        userId,
       }),
   },
 

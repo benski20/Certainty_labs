@@ -6,9 +6,12 @@ create table if not exists public.api_keys (
   name text not null default 'default',
   key_hash text not null,
   prefix text not null,
-  created_at double precision not null
+  created_at double precision not null,
+  -- Optional: associate keys with an authenticated user (e.g. Supabase auth user id).
+  user_id text
 );
 
 create unique index if not exists idx_api_keys_key_hash on public.api_keys (key_hash);
+create index if not exists idx_api_keys_user_id on public.api_keys (user_id);
 
 comment on table public.api_keys is 'Certainty Labs API keys (key_hash only; raw key never stored).';

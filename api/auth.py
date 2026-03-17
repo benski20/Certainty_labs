@@ -22,7 +22,7 @@ def _hash_key(raw_key: str) -> str:
     return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
-def generate_api_key(name: str = "default") -> tuple[str, dict]:
+def generate_api_key(name: str = "default", user_id: Optional[str] = None) -> tuple[str, dict]:
     """Create a new API key. Returns (raw_key, key_record).
 
     The raw key is shown once; only the hash is persisted.
@@ -34,20 +34,28 @@ def generate_api_key(name: str = "default") -> tuple[str, dict]:
         "key_hash": _hash_key(raw),
         "prefix": raw[:8],
         "created_at": time.time(),
+        # Optional: associate with an application user (e.g. Supabase user id)
+        "user_id": user_id,
     }
     store = get_key_store()
     store.create(record)
     return raw, record
 
 
-def list_api_keys() -> list[dict]:
-    """Return all key records (hashes, not raw keys)."""
-    return get_key_store().list_all()
+def list_api_keys(user_id: Optional[str] = None) -> list[dict]:
+    """Return key records (hashes, not raw keys).
+
+    When user_id is provided, only returns keys owned by that user.
+    """
+    return get_key_store().list_all(user_id=user_id)
 
 
-def revoke_api_key(key_id: str) -> bool:
-    """Remove a key by id. Returns True if found and removed."""
-    return get_key_store().delete_by_id(key_id)
+def revoke_api_key(key_id: str, user_id: Optional[str] = None) -> bool:
+    """Remove a key by id. Returns True if found and removed.
+
+    When user_id is provided, only deletes keys owned by that user.
+    """
+    return get_key_store().delete_by_id(key_id, user_id=user_id)
 
 
 def _extract_token(request: Request) -> Optional[str]:
