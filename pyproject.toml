@@ -26,6 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 demo = ["streamlit>=1.33.0"]
 dev = ["pytest>=8.0.0", "pytest-asyncio", "black", "ruff"]
+modal = ["modal>=0.64.0"]
 
 [build-system]
 requires = ["setuptools>=68.0"]

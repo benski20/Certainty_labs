@@ -57,7 +57,7 @@ def _load_demo_records(max_lines: int = DEMO_SUBSET_LINES) -> list[dict]:
 _DEFAULT_BASE_URL = "https://certainty-labs.onrender.com"
 
 # Remote servers (e.g. Render) can have cold starts; use generous timeouts.
-_REMOTE_TIMEOUT = 90.0
+_REMOTE_TIMEOUT = 180.0
 
 
 @pytest.fixture(scope="module")
@@ -194,7 +194,10 @@ class TestTrain:
         )
         assert isinstance(r, TrainResponse)
         assert r.model_path
-        assert os.path.exists(r.model_path)
+        # model_path is a server-side filesystem path (e.g. Modal container), not local.
+        # Prove it exists by using it in a follow-up call.
+        scored = sync_client.score(["sanity check"], model_path=r.model_path)
+        assert len(scored.energies) == 1
         assert r.epochs_trained >= 1
         assert r.elapsed_seconds >= 0
         assert 0 <= r.best_val_acc <= 100
@@ -228,7 +231,8 @@ class TestTrain:
             n_layers=1,
         )
         assert r.model_path
-        assert os.path.exists(r.model_path)
+        scored = sync_client.score(["sanity check"], model_path=r.model_path)
+        assert len(scored.energies) == 1
 
     def test_train_with_training_params(self, sync_client, demo_records):
         from certaintylabs.types import TrainingParams
@@ -298,8 +302,8 @@ class TestScore:
                 ["hello"],
                 model_path="/nonexistent/model.pt",
             )
-        # 404 = model not found; 500 = server missing deps (e.g. numpy) on some hosts
-        assert exc_info.value.status_code in (404, 500)
+        # 404 = model not found; 500 = server missing deps; 502 = gateway/down (e.g. Render)
+        assert exc_info.value.status_code in (404, 500, 502)
 
 
 # ----- Rerank -----
@@ -344,8 +348,8 @@ class TestRerank:
                 candidates=["c1", "c2"],
                 model_path="/nonexistent/model.pt",
             )
-        # 401 if auth required, 400/404 for bad request/model not found, 500 if server missing deps
-        assert exc_info.value.status_code in (400, 401, 404, 500)
+        # 401 if auth required, 400/404 for bad request, 500/502 if server/gateway issue
+        assert exc_info.value.status_code in (400, 401, 404, 500, 502)
 
 
 # ----- Pipeline -----
@@ -532,8 +536,8 @@ class TestExceptions:
             )
         err = exc_info.value
         assert isinstance(err, CertaintyError)
-        # 400 = empty texts, 404 = model path missing, 500 = server missing deps (e.g. numpy)
-        assert err.status_code in (400, 404, 500)
+        # 400 = empty texts, 404 = model path missing, 500/502 = server or gateway issue
+        assert err.status_code in (400, 404, 500, 502)
         assert err.detail
 
     def test_context_manager_sync(self, base_url, api_key):

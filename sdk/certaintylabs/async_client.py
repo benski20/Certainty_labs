@@ -18,7 +18,8 @@ from certaintylabs.types import (
     TrainingParams,
 )
 
-_DEFAULT_BASE_URL = "http://localhost:8000"
+# Default to the public cloud API so external users don't need CERTAINTY_BASE_URL.
+_DEFAULT_BASE_URL = "https://sandboxtesting101--certainty-labs-api.modal.run"
 _DEFAULT_TIMEOUT = 300.0
 
 _ENV_BASE_URL = "CERTAINTY_BASE_URL"

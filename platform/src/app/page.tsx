@@ -124,13 +124,13 @@ export default function Home() {
                 variants={fadeIn}
                 className="font-serif text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance text-neutral-900"
               >
-                Give Your LLM a Better Filter
+                The training API for model verification.
               </motion.h1>
               <motion.p
                 variants={fadeIn}
                 className="font-serif text-base md:text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed"
               >
-                The training API for developers, labs, and enterprises to ensure every output meets the highest standard.
+                Build custom Energy-Based Models that audit, score, and enforce logical alignment. 
               </motion.p>
               <motion.div
                 variants={fadeInUp}
