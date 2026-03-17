@@ -42,22 +42,20 @@ export default function ApiKeysPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setUserId(null)
-      return
-    }
+    if (!isSupabaseConfigured()) return
     let cancelled = false
     createSupabaseBrowserClient()
       .auth.getSession()
       .then(({ data }) => {
         if (!cancelled) setUserId(data.session?.user?.id ?? null)
       })
+      .catch(() => {
+        if (!cancelled) setUserId(null)
+      })
     return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
-    // When auth configured, wait for userId (fast from localStorage). Otherwise fetch immediately.
-    if (isSupabaseConfigured() && userId === undefined) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -93,7 +91,7 @@ export default function ApiKeysPage() {
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [])
 
   const canCreate = !isSupabaseConfigured() || userId != null
 
