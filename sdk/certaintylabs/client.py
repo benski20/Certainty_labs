@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from certaintylabs.exceptions import APIError, ConnectionError, TimeoutError
+
+logger = logging.getLogger("certaintylabs")
 from certaintylabs.types import (
     HealthResponse,
     PipelineResponse,
@@ -58,28 +62,60 @@ class Certainty:
             headers=headers,
             timeout=timeout,
         )
+        logger.info("Certainty client initialized base_url=%s auth=%s", self.base_url, "yes" if self.api_key else "no")
+
+    def _parse_json(self, resp: httpx.Response) -> dict:
+        """Parse response as JSON; raise clear error if body is empty or invalid."""
+        try:
+            data = resp.json()
+        except json.JSONDecodeError as e:
+            preview = (resp.text[:200] + "…") if len(resp.text or "") > 200 else (resp.text or "(empty)")
+            logger.error("JSONDecodeError status=%d body=%s", resp.status_code, preview)
+            raise APIError(
+                status_code=resp.status_code,
+                detail=f"Invalid JSON response: {e}. Body: {preview}. "
+                "The server may have timed out or returned an error page.",
+            ) from e
+        return data
 
     def _request(self, method: str, path: str, **kwargs: Any) -> dict:
+        url = f"{self.base_url}{path}"
+        logger.debug("Request %s %s", method, url)
+        start = time.monotonic()
         try:
             resp = self._client.request(method, path, **kwargs)
         except httpx.ConnectError as e:
+            logger.warning("ConnectionError %s %s: %s", method, path, e)
             raise ConnectionError(self.base_url, e) from e
         except httpx.TimeoutException as e:
+            logger.warning("Timeout %s %s after %.1fs", method, path, time.monotonic() - start)
             raise TimeoutError(self.timeout, path) from e
 
+        elapsed = time.monotonic() - start
+        logger.debug("Response %s %s -> %d in %.2fs", method, path, resp.status_code, elapsed)
+
         if resp.status_code >= 400:
-            body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            logger.warning("API error %s %s -> %d: %s", method, path, resp.status_code, (resp.text or "")[:200])
+            body = {}
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                try:
+                    body = resp.json()
+                except json.JSONDecodeError:
+                    pass
             raise APIError(
                 status_code=resp.status_code,
-                detail=body.get("detail", resp.text),
+                detail=body.get("detail", resp.text or "(empty response)"),
                 error_type=body.get("error_type"),
             )
-        return resp.json()
+        data = self._parse_json(resp)
+        logger.debug("Parsed JSON %s %s: %s", method, path, str(data)[:300] + "…" if len(str(data)) > 300 else str(data))
+        return data
 
     # ── Endpoints ─────────────────────────────────────────────────────
 
     def health(self) -> HealthResponse:
         """Check API health and version."""
+        logger.debug("health()")
         data = self._request("GET", "/health")
         return HealthResponse(status=data["status"], version=data["version"])
 
@@ -132,6 +168,7 @@ class Certainty:
         if data is not None:
             payload["data"] = data
 
+        logger.info("train(epochs=%d, data=%s)", epochs, "provided" if (data is not None or data_path is not None) else "built-in")
         data_resp = self._request("POST", "/train", json=payload)
         return TrainResponse(
             model_path=data_resp["model_path"],
@@ -189,6 +226,7 @@ class Certainty:
         training_params: Optional[TrainingParams] = None,
     ) -> TrainResponse:
         """Train on a local EORM JSONL file. Reads the file and sends records to the API."""
+        logger.info("train_from_file(path=%s)", path)
         records: List[Dict[str, Any]] = []
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -251,6 +289,7 @@ class Certainty:
         if (candidates is None or len(candidates) == 0) and (openai_api_key is not None or (hf_model and hf_token)):
             payload["n_candidates"] = n_candidates
 
+        logger.debug("rerank(candidates=%d, prompt_len=%d)", len(candidates or []), len(prompt))
         data = self._request("POST", "/rerank", json=payload)
         return RerankResponse(
             best_candidate=data["best_candidate"],
@@ -277,6 +316,7 @@ class Certainty:
         }
         if tokenizer_path is not None:
             payload["tokenizer_path"] = tokenizer_path
+        logger.debug("score(texts=%d)", len(texts))
         data = self._request("POST", "/score", json=payload)
         return ScoreResponse(energies=data["energies"])
 
@@ -318,6 +358,7 @@ class Certainty:
         if candidates is not None:
             payload["candidates"] = candidates
 
+        logger.info("pipeline(epochs=%d, candidates=%s)", epochs, len(candidates) if candidates else 0)
         data_resp = self._request("POST", "/pipeline", json=payload)
         return PipelineResponse._from_dict(data_resp)
 

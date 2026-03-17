@@ -68,6 +68,15 @@ client.health()
 
 You can also pass `api_key` explicitly to override the environment.
 
+### Logging
+
+The SDK logs at INFO (client init, train, pipeline) and DEBUG (requests, responses). Enable verbose logs:
+
+```python
+import logging
+logging.getLogger("certaintylabs").setLevel(logging.DEBUG)
+```
+
 ## Data options
 
 | Option | SDK / API |

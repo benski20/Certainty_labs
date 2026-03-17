@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from certaintylabs.exceptions import APIError, ConnectionError, TimeoutError
+
+logger = logging.getLogger("certaintylabs")
 from certaintylabs.types import (
     HealthResponse,
     PipelineResponse,
@@ -49,23 +53,53 @@ class AsyncCertainty:
             headers=headers,
             timeout=timeout,
         )
+        logger.info("AsyncCertainty client initialized base_url=%s auth=%s", self.base_url, "yes" if self.api_key else "no")
+
+    def _parse_json(self, resp: httpx.Response) -> dict:
+        """Parse response as JSON; raise clear error if body is empty or invalid."""
+        try:
+            data = resp.json()
+        except json.JSONDecodeError as e:
+            preview = (resp.text[:200] + "…") if len(resp.text or "") > 200 else (resp.text or "(empty)")
+            logger.error("JSONDecodeError status=%d body=%s", resp.status_code, preview)
+            raise APIError(
+                status_code=resp.status_code,
+                detail=f"Invalid JSON response: {e}. Body: {preview}. "
+                "The server may have timed out or returned an error page.",
+            ) from e
+        return data
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict:
+        logger.debug("Request %s %s", method, f"{self.base_url}{path}")
+        start = time.monotonic()
         try:
             resp = await self._client.request(method, path, **kwargs)
         except httpx.ConnectError as e:
+            logger.warning("ConnectionError %s %s: %s", method, path, e)
             raise ConnectionError(self.base_url, e) from e
         except httpx.TimeoutException as e:
+            logger.warning("Timeout %s %s after %.1fs", method, path, time.monotonic() - start)
             raise TimeoutError(self.timeout, path) from e
 
+        elapsed = time.monotonic() - start
+        logger.debug("Response %s %s -> %d in %.2fs", method, path, resp.status_code, elapsed)
+
         if resp.status_code >= 400:
-            body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            logger.warning("API error %s %s -> %d: %s", method, path, resp.status_code, (resp.text or "")[:200])
+            body = {}
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                try:
+                    body = resp.json()
+                except json.JSONDecodeError:
+                    pass
             raise APIError(
                 status_code=resp.status_code,
-                detail=body.get("detail", resp.text),
+                detail=body.get("detail", resp.text or "(empty response)"),
                 error_type=body.get("error_type"),
             )
-        return resp.json()
+        data = self._parse_json(resp)
+        logger.debug("Parsed JSON %s %s: %s", method, path, str(data)[:300] + "…" if len(str(data)) > 300 else str(data))
+        return data
 
     # ── Endpoints ─────────────────────────────────────────────────────
 
