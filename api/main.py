@@ -52,6 +52,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# Root: so Render/default health checks (GET /) get 200 instead of 404
+@app.get("/")
+async def root():
+    return {"service": "Certainty Labs API", "docs": "/docs", "health": "/health"}
+
+
 # Public routes (no auth required)
 app.include_router(keys.router, tags=["api-keys"])
 
