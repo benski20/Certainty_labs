@@ -61,6 +61,7 @@ class Certainty:
             base_url=self.base_url,
             headers=headers,
             timeout=timeout,
+            follow_redirects=True,
         )
         logger.info("Certainty client initialized base_url=%s auth=%s", self.base_url, "yes" if self.api_key else "no")
 

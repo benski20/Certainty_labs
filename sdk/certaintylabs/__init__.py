@@ -27,6 +27,6 @@ __all__ = [
     "PipelineResponse",
 ]
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 # Enable verbose logs: logging.getLogger("certaintylabs").setLevel(logging.DEBUG)
