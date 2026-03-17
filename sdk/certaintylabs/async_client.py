@@ -18,34 +18,31 @@ from certaintylabs.types import (
     TrainingParams,
 )
 
-# Default to the public cloud API so external users don't need CERTAINTY_BASE_URL.
-_DEFAULT_BASE_URL = "https://sandboxtesting101--certainty-labs-api.modal.run"
+# Fixed API base URL — users do not configure this.
+_BASE_URL = "https://sandboxtesting101--certainty-labs-api.modal.run"
 _DEFAULT_TIMEOUT = 300.0
 
-_ENV_BASE_URL = "CERTAINTY_BASE_URL"
 _ENV_API_KEY = "CERTAINTY_API_KEY"
 
 
 class AsyncCertainty:
     """Asynchronous Python client for the Certainty Labs API.
 
-    Supports the same environment variables as the sync client:
-    CERTAINTY_BASE_URL, CERTAINTY_API_KEY.
+    Set your API key via environment variable: CERTAINTY_API_KEY.
     """
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         timeout: float = _DEFAULT_TIMEOUT,
     ):
-        self.base_url = (base_url or os.environ.get(_ENV_BASE_URL) or _DEFAULT_BASE_URL).rstrip("/")
+        self.base_url = _BASE_URL.rstrip("/")
         self.api_key = api_key if api_key is not None else os.environ.get(_ENV_API_KEY)
         self.timeout = timeout
 
         headers: Dict[str, str] = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         self._client = httpx.AsyncClient(
             base_url=self.base_url,

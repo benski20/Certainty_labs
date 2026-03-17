@@ -17,7 +17,7 @@ pip install certaintylabs
 ```python
 from certaintylabs import Certainty
 
-client = Certainty(base_url="http://localhost:8000")
+client = Certainty()  # Uses fixed API URL; set CERTAINTY_API_KEY for auth
 
 # Check the server is running
 health = client.health()
@@ -50,35 +50,23 @@ async def main():
         best = await client.rerank(["A", "B", "C"], prompt="...")
 ```
 
-## Production: base URL and API key
+## Production: API key
 
-For production or shared deployments, **don’t hardcode the API URL or API key**. Use environment variables so the same code works everywhere:
-
-| Variable               | Purpose |
-|------------------------|--------|
-| `CERTAINTY_BASE_URL`   | API root (e.g. `https://api.certaintylabs.ai` or your own host). |
-| `CERTAINTY_API_KEY`     | API key (e.g. `ck_...`). |
-
-If these are set, `Certainty()` and `AsyncCertainty()` use them when you don’t pass `base_url` or `api_key`:
+The API base URL is fixed; you don't configure it. Set your API key via environment variable:
 
 ```bash
-export CERTAINTY_BASE_URL="https://api.certaintylabs.ai"
 export CERTAINTY_API_KEY="ck_your_key_here"
 ```
 
 ```python
 from certaintylabs import Certainty
 
-# Uses CERTAINTY_BASE_URL and CERTAINTY_API_KEY from the environment
+# Reads CERTAINTY_API_KEY from env
 client = Certainty()
 client.health()
 ```
 
-You can still pass `base_url` or `api_key` explicitly; those override the environment.
-
-- **Local dev:** Omit both; the client defaults to `http://localhost:8000` and no key.
-- **Your own server:** Set `CERTAINTY_BASE_URL` (and optionally `CERTAINTY_API_KEY`) in your deployment config.
-- **Certainty-hosted API:** Set both env vars as provided in your dashboard.
+You can also pass `api_key` explicitly to override the environment.
 
 ## Data options
 
@@ -94,13 +82,14 @@ Training data must be **EORM format**: one JSON object per line with `question`,
 
 ## API Reference
 
-### `Certainty(base_url=None, api_key=None, timeout=300.0)`
+### `Certainty(api_key=None, timeout=300.0)`
 
 | Parameter  | Type            | Default                  |
 |------------|-----------------|--------------------------|
-| `base_url` | `str` or `None` | `None` → env `CERTAINTY_BASE_URL` or `"http://localhost:8000"` |
 | `api_key`  | `str` or `None` | `None` → env `CERTAINTY_API_KEY` or no auth |
 | `timeout`  | `float`         | `300.0`                  |
+
+The API base URL is fixed and not configurable.
 
 ### Methods
 
@@ -245,10 +234,11 @@ except APIError as e:
     print(e.detail)       # error message from the server
 
 try:
-    client = Certainty(base_url="http://localhost:9999")
+    # ConnectionError when server unreachable (base URL is fixed)
+    client = Certainty(timeout=2.0)
     client.health()
 except ConnectionError as e:
-    print(e)  # "Could not connect to http://localhost:9999: ..."
+    print(e)  # "Could not connect to <api-url>: ..."
 ```
 
 ## License

@@ -5,8 +5,7 @@ Uses REAL data from demo_dataset/results_gsm8k_llama3_test_n4_temp0.7_p0.9_test.
 actually trains a model, and exercises every endpoint and client path.
 
 Prerequisites:
-  - API: by default uses https://certainty-labs.onrender.com (no local server).
-    Override with CERTAINTY_BASE_URL for local (e.g. http://localhost:8000).
+  - API: uses the SDK's fixed base URL (no configuration needed).
   - For train/score/rerank to pass, the server must have all runtime deps
     (transformers, torch, numpy, etc.; see requirements.txt). Render and
     other hosts need these installed.
@@ -52,9 +51,8 @@ def _load_demo_records(max_lines: int = DEMO_SUBSET_LINES) -> list[dict]:
     return records
 
 
-# Default to Render deployment so tests run against live API like a real user.
-# Override with CERTAINTY_BASE_URL for local (e.g. http://localhost:8000).
-_DEFAULT_BASE_URL = "https://certainty-labs.onrender.com"
+# Must match SDK's fixed base URL (users cannot override).
+_DEFAULT_BASE_URL = "https://sandboxtesting101--certainty-labs-api.modal.run"
 
 # Remote servers (e.g. Render) can have cold starts; use generous timeouts.
 _REMOTE_TIMEOUT = 180.0
@@ -62,9 +60,8 @@ _REMOTE_TIMEOUT = 180.0
 
 @pytest.fixture(scope="module")
 def base_url():
-    """API base URL (no trailing slash). Defaults to Render deployment."""
-    url = os.environ.get("CERTAINTY_BASE_URL", _DEFAULT_BASE_URL)
-    return url.rstrip("/")
+    """API base URL (fixed, matches SDK)."""
+    return _DEFAULT_BASE_URL.rstrip("/")
 
 
 def _check_certainty_server(base_url: str) -> None:
@@ -120,7 +117,7 @@ def sync_client(base_url, api_key):
     """Sync Certainty client pointing at the running API (with API key when auth enabled)."""
     _check_certainty_server(base_url)
     from certaintylabs import Certainty
-    client = Certainty(base_url=base_url, api_key=api_key, timeout=360.0)
+    client = Certainty(api_key=api_key, timeout=360.0)
     yield client
     client.close()
 
@@ -168,7 +165,7 @@ class TestHealth:
     @pytest.mark.asyncio
     async def test_async_health(self, base_url, api_key):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key) as client:
+        async with AsyncCertainty(api_key=api_key) as client:
             r = await client.health()
             assert r.status == "ok"
             assert r.version
@@ -204,7 +201,7 @@ class TestTrain:
 
     def test_train_from_file(self, sync_client, api_key, demo_data_path):
         from certaintylabs import Certainty
-        client = Certainty(base_url=sync_client.base_url, api_key=api_key, timeout=360.0)
+        client = Certainty(api_key=api_key, timeout=360.0)
         try:
             r = client.train_from_file(
                 demo_data_path,
@@ -251,7 +248,7 @@ class TestTrain:
     @pytest.mark.asyncio
     async def test_async_train(self, base_url, api_key, demo_records):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key, timeout=360.0) as client:
+        async with AsyncCertainty(api_key=api_key, timeout=360.0) as client:
             r = await client.train(
                 data=demo_records[:300],
                 tokenizer_name="gpt2",
@@ -288,7 +285,7 @@ class TestScore:
     @pytest.mark.asyncio
     async def test_async_score(self, base_url, api_key, trained_model_path):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key) as client:
+        async with AsyncCertainty(api_key=api_key) as client:
             r = await client.score(
                 ["Async score text one.", "Async score text two."],
                 model_path=trained_model_path,
@@ -333,7 +330,7 @@ class TestRerank:
     @pytest.mark.asyncio
     async def test_async_rerank(self, base_url, api_key, trained_model_path):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key) as client:
+        async with AsyncCertainty(api_key=api_key) as client:
             r = await client.rerank(
                 candidates=["Option A", "Option B"],
                 model_path=trained_model_path,
@@ -391,7 +388,7 @@ class TestPipeline:
     @pytest.mark.asyncio
     async def test_async_pipeline(self, base_url, api_key, demo_records):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key, timeout=360.0) as client:
+        async with AsyncCertainty(api_key=api_key, timeout=360.0) as client:
             r = await client.pipeline(
                 data=demo_records[:300],
                 tokenizer_name="gpt2",
@@ -542,7 +539,7 @@ class TestExceptions:
 
     def test_context_manager_sync(self, base_url, api_key):
         from certaintylabs import Certainty
-        with Certainty(base_url=base_url, api_key=api_key) as client:
+        with Certainty(api_key=api_key) as client:
             r = client.health()
             assert r.status == "ok"
         # After exit, client is closed (no double-close)
@@ -550,7 +547,7 @@ class TestExceptions:
     @pytest.mark.asyncio
     async def test_context_manager_async(self, base_url, api_key):
         from certaintylabs import AsyncCertainty
-        async with AsyncCertainty(base_url=base_url, api_key=api_key) as client:
+        async with AsyncCertainty(api_key=api_key) as client:
             r = await client.health()
             assert r.status == "ok"
 
@@ -629,10 +626,12 @@ class TestConnectionBehavior:
     """When server is unreachable, SDK raises ConnectionError."""
 
     def test_connection_error_on_bad_host(self):
+        from unittest.mock import patch
         from certaintylabs import Certainty
         from certaintylabs.exceptions import ConnectionError as CertaintyConnectionError
-        # Use a port that is not listening
-        client = Certainty(base_url="http://127.0.0.1:31999", timeout=2.0)
+        # Use a port that is not listening (patch fixed base URL for this test)
+        with patch("certaintylabs.client._BASE_URL", "http://127.0.0.1:31999"):
+            client = Certainty(timeout=2.0)
         try:
             with pytest.raises(CertaintyConnectionError) as exc_info:
                 client.health()

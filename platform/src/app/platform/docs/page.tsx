@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Copy, Check, ChevronRight, ExternalLink, Search } from 'lucide-react'
+import { Copy, Check, ChevronRight, ExternalLink } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -26,7 +26,8 @@ interface Endpoint {
 
 // ── Data ────────────────────────────────────────────────────────────
 
-const DEFAULT_API_BASE = 'https://certainty-labs.onrender.com'
+// Matches SDK fixed URL (users do not configure)
+const DEFAULT_API_BASE = 'https://sandboxtesting101--certainty-labs-api.modal.run'
 const BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_CERTAINTY_BASE_URL || DEFAULT_API_BASE
 
 const endpoints: Endpoint[] = [
@@ -131,11 +132,8 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
           {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
         </button>
       </div>
-      <pre className="bg-neutral-100 text-neutral-800 rounded-lg p-4 text-[13px] leading-relaxed overflow-x-auto font-mono border border-neutral-200">
-        <code>
-          {lang && <span className="text-neutral-500 text-[11px] block mb-2">{lang}</span>}
-          {code}
-        </code>
+      <pre className="bg-neutral-100 text-neutral-800 rounded-lg p-4 text-[13px] leading-relaxed overflow-x-auto font-mono border border-neutral-200 max-w-full">
+        <code className="block min-w-0">{code}</code>
       </pre>
     </div>
   )
@@ -188,7 +186,7 @@ function ParamTable({ params }: { params: Param[] }) {
 }
 
 function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
-  const [tab, setTab] = useState<'curl' | 'python' | 'sdk'>('curl')
+  const [tab, setTab] = useState<'curl' | 'python' | 'sdk'>('sdk')
 
   const codeForTab = tab === 'curl' ? ep.curl : tab === 'python' ? ep.python : ep.sdk
   const langForTab = tab === 'curl' ? 'bash' : 'python'
@@ -237,18 +235,15 @@ function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
 
 const onThisPageItems = [
   { id: 'overview', label: 'Overview' },
+  { id: 'authentication', label: 'Auth' },
   { id: 'qwen-llama', label: 'Qwen & Llama' },
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'quickstart', label: 'Quickstart' },
-  { id: 'sdk', label: 'Python SDK' },
-  { id: 'verifiable-ai', label: 'Verifiable & interpretable AI' },
+  { id: 'verifiable-ai', label: 'Score (confidence)' },
   { id: 'ep-train', label: '/train' },
   { id: 'ep-rerank', label: '/rerank' },
   { id: 'ep-score', label: '/score' },
   { id: 'ep-pipeline', label: '/pipeline' },
-  { id: 'ep-api-keys', label: 'API Key Management' },
-  { id: 'data-format', label: 'EORM Data Format' },
-  { id: 'data-external', label: 'Generating Data Externally' },
+  { id: 'ep-api-keys', label: 'API Keys' },
+  { id: 'data-format', label: 'EORM Format' },
   { id: 'errors', label: 'Errors' },
 ]
 
@@ -282,44 +277,50 @@ export default function DocsPage() {
         <div className="flex items-center gap-4" />
       </header>
 
-      <div className="flex flex-1">
-        {/* Center content */}
-      <div className="flex-1 min-w-0 max-w-3xl px-8 py-10 mx-auto">
+      <div className="flex flex-1 w-full max-w-[1400px] mx-auto">
+        {/* Center content — wider */}
+      <div className="flex-1 min-w-0 max-w-5xl px-10 py-10">
+        {/* Starter code — copy-paste ready */}
+        <div className="mb-10 p-5 bg-neutral-50 border border-neutral-200 rounded-xl">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Quick start</p>
+          <CodeBlock
+            code={`# 1. Create key in Platform → API Keys, then:
+export CERTAINTY_API_KEY="ck_..."
+
+# 2. Install & run
+pip install certaintylabs
+
+# 3. Python
+from certaintylabs import Certainty
+client = Certainty()
+print(client.health().version)           # 0.1.0
+r = client.train(epochs=5)               # built-in GSM8K
+best = client.rerank(["A","B","C"], prompt="What is 2+2?")
+print(best.best_candidate)`}
+            lang="python"
+          />
+        </div>
+
         {/* Page title */}
-        <div className="mb-10">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">API Reference</h1>
           <p className="text-[15px] text-neutral-600 mt-2 leading-relaxed">
-            Train TransEBM energy models, score and rerank LLM outputs. Production-ready: create API keys in the dashboard, use Bearer auth, deploy to Modal/AWS/Azure.
+            Train TransEBM energy models, score and rerank LLM outputs. API URL is fixed; set <code className="text-[13px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> for auth.
           </p>
-          <div className="flex items-center gap-4 mt-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-500">Base URL</span>
-              <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">{BASE}</code>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-500">Version</span>
-              <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">0.1.0</code>
-            </div>
+          <div className="flex items-center gap-4 mt-3 flex-wrap">
+            <span className="text-xs text-neutral-500">Version</span>
+            <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">0.1.0</code>
           </div>
         </div>
 
         {/* Overview */}
-        <section id="overview" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Overview</h2>
-          <div className="text-sm text-neutral-600 leading-relaxed space-y-3">
-            <p>
-              Certainty trains TransEBM energy models that score LLM outputs (lower energy = more likely correct).
-              Use <strong>your own data</strong> (in-memory or JSONL) or the <strong>built-in GSM8K</strong> dataset; <strong>tune training</strong> (epochs, d_model, lr); use <strong>your own LLM</strong> in rerank (OpenAI-compatible or <strong>Hugging Face Qwen/Llama</strong>).
-            </p>
-            <p>
-              <strong>Production:</strong> Create API keys in Platform → API Keys. Set <code className="text-[13px] bg-neutral-100 px-1 rounded">CERTAINTY_BASE_URL</code> and <code className="text-[13px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> in your environment. Deploy the API to Modal, AWS, or Azure (see docs).
-            </p>
-            <p>
-              Training data: EORM format (question, label 0/1, gen_text). Generate externally if needed (see &quot;Generating Data Externally&quot;).
-            </p>
-          </div>
+        <section id="overview" className="mb-12 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Overview</h2>
+          <p className="text-sm text-neutral-600 leading-relaxed mb-4">
+            Train on built-in GSM8K or your EORM data. Rerank candidates or generate via OpenAI/HF. Score outputs for confidence tracking. Data: <code className="text-[12px] bg-neutral-100 px-1 rounded">question</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">label</code> (0/1), <code className="text-[12px] bg-neutral-100 px-1 rounded">gen_text</code>.
+          </p>
 
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { n: '1', title: 'Train', desc: 'Built-in GSM8K or your EORM data. Tunable params.' },
               { n: '2', title: 'Rerank', desc: 'Score candidates; pick lowest energy. Generate via OpenAI-compatible or HF (Qwen/Llama) then rerank.' },
@@ -356,109 +357,26 @@ export default function DocsPage() {
           </div>
         </section>
 
-        {/* Qwen & Llama compatibility */}
-        <section id="qwen-llama" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Qwen & Llama (Hugging Face)</h2>
-          <p className="text-[15px] text-neutral-600 leading-relaxed mb-3">
-            For best results when your candidates come from <strong>Qwen</strong> or <strong>Llama</strong> (on Hugging Face), use the same tokenizer in training so the EBM tokenization matches your LLM.
-          </p>
-          <ul className="text-sm text-neutral-600 space-y-1.5 list-disc list-inside mb-4">
-            <li><strong>Training:</strong> Set <code className="text-[13px] bg-neutral-100 px-1 rounded">tokenizer_name</code> on <code className="text-[13px] bg-neutral-100 px-1 rounded">POST /train</code> or <code className="text-[13px] bg-neutral-100 px-1 rounded">/pipeline</code>. Use an alias (e.g. <code className="text-[13px] bg-neutral-100 px-1 rounded">qwen2.5-7b</code>, <code className="text-[13px] bg-neutral-100 px-1 rounded">llama-3.1-8b</code>) or a full Hugging Face ID. Default is <code className="text-[13px] bg-neutral-100 px-1 rounded">gpt2</code>.</li>
-            <li><strong>Rerank (generate candidates):</strong> Omit <code className="text-[13px] bg-neutral-100 px-1 rounded">candidates</code> and set either <strong>OpenAI-compatible</strong> (<code className="text-[13px] bg-neutral-100 px-1 rounded">openai_api_key</code>, etc.) or <strong>Hugging Face</strong> (<code className="text-[13px] bg-neutral-100 px-1 rounded">hf_model</code> + <code className="text-[13px] bg-neutral-100 px-1 rounded">hf_token</code>). HF uses the Inference API to generate <code className="text-[13px] bg-neutral-100 px-1 rounded">n_candidates</code>, then reranks.</li>
-          </ul>
-          <CodeBlock
-            code={`# Train with Qwen tokenizer (saved model + tokenizer used at rerank)\nrequests.post("${BASE}/train", json={"tokenizer_name": "qwen2.5-7b", "epochs": 10})\n\n# Rerank: generate 5 candidates with HF Qwen, then pick best\nrequests.post("${BASE}/rerank", json={"prompt": "What is 2+2?", "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5})`}
-            lang="python"
-          />
+        {/* Auth & Qwen/Llama — concise */}
+        <section id="authentication" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Authentication</h2>
+          <p className="text-sm text-neutral-600 mb-2">Create keys in <strong>Platform → API Keys</strong>. Use <code className="text-[12px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code>. SDK reads <code className="text-[12px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> from env.</p>
         </section>
 
-        {/* Authentication */}
-        <section id="authentication" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Authentication</h2>
-          <p className="text-[15px] text-neutral-600 leading-relaxed mb-4">
-            Create API keys in the <strong>Platform → API Keys</strong> dashboard. Pass the key as <code className="text-[13px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code> on every request. When no keys exist, endpoints are open (local dev only).
-          </p>
-          <CodeBlock
-            code={`# Header (recommended)\ncurl -H "Authorization: Bearer ck_..." ${BASE}/health\n\n# SDK (reads CERTAINTY_API_KEY from env)\nfrom certaintylabs import Certainty\nclient = Certainty()`}
-            lang="bash"
-          />
-          <p className="text-sm text-amber-800 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <strong>Production:</strong> Store keys securely. The raw key is shown only once at creation. Use environment variables (<code className="text-[11px] bg-white px-1 rounded">CERTAINTY_API_KEY</code>) — never commit keys to source control.
-          </p>
+        <section id="qwen-llama" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Qwen & Llama</h2>
+          <p className="text-sm text-neutral-600 mb-2">Match tokenizer to your LLM: <code className="text-[12px] bg-neutral-100 px-1 rounded">tokenizer_name="qwen2.5-7b"</code> or <code className="text-[12px] bg-neutral-100 px-1 rounded">llama-3.1-8b</code>. Rerank: omit <code className="text-[12px] bg-neutral-100 px-1 rounded">candidates</code>, set <code className="text-[12px] bg-neutral-100 px-1 rounded">hf_model</code>+<code className="text-[12px] bg-neutral-100 px-1 rounded">hf_token</code> or <code className="text-[12px] bg-neutral-100 px-1 rounded">openai_api_key</code>.</p>
         </section>
 
-        {/* Quickstart */}
-        <section id="quickstart" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Quickstart</h2>
-          <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            Use the hosted Certainty API. Create an API key in <strong>Platform → API Keys</strong>, then set your environment.
-          </p>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-medium text-neutral-500 mb-1.5">1. Create key & set environment</p>
-              <CodeBlock
-                code={`# Create key in Platform → API Keys, then:\nexport CERTAINTY_BASE_URL="${BASE}"\nexport CERTAINTY_API_KEY="ck_..."`}
-                lang="bash"
-              />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-neutral-500 mb-1.5">2. Train (built-in GSM8K)</p>
-              <CodeBlock
-                code={`import os\nimport requests\napi_key = os.environ["CERTAINTY_API_KEY"]\nheaders = {"Authorization": f"Bearer {api_key}"}\nr = requests.post("${BASE}/train", json={"epochs": 10}, headers=headers).json()\nprint(r["best_val_acc"], r["model_path"])`}
-                lang="python"
-              />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-neutral-500 mb-1.5">3. Rerank (your candidates or your LLM)</p>
-              <CodeBlock
-                code={`# Option A: you provide candidates\nbest = requests.post("${BASE}/rerank", json={"candidates": ["A", "B", "C"], "prompt": q}, headers=headers).json()\n# Option B: API generates with your LLM then reranks\nbest = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers=headers).json()\nprint(best["best_candidate"])`}
-                lang="python"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Python SDK */}
-        <section id="sdk" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Python SDK</h2>
-          <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">certaintylabs</code> — typed sync/async clients for the hosted API. Supports <code className="text-[13px] bg-neutral-100 px-1 rounded">tokenizer_name</code> (Qwen/Llama), <code className="text-[13px] bg-neutral-100 px-1 rounded">openai_api_key</code>, and <code className="text-[13px] bg-neutral-100 px-1 rounded">hf_model</code>+<code className="text-[13px] bg-neutral-100 px-1 rounded">hf_token</code> for rerank; no local server needed.
-          </p>
-          <CodeBlock code={`pip install certaintylabs`} lang="bash" />
-          <div className="mt-3 space-y-3">
-            <CodeBlock
-              code={`from certaintylabs import Certainty\n\n# Reads CERTAINTY_BASE_URL (${BASE}) and CERTAINTY_API_KEY from env\nclient = Certainty()\n\n# Train (built-in or your data)\nresult = client.train(epochs=10)\nresult = client.train_with_data(samples, epochs=10)\nresult = client.train_from_file("data.jsonl")\n\n# Rerank (your candidates or your LLM)\nbest = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)`}
-              lang="python"
-            />
-            <CodeBlock code={`from certaintylabs import AsyncCertainty\nasync with AsyncCertainty() as c:\n    r = await c.train(epochs=5)\n    b = await c.rerank(prompt=q, openai_api_key="sk-...")`} lang="python" />
-          </div>
-          <p className="text-xs text-neutral-500 mt-3">
-            Env: <code className="bg-neutral-100 px-1 rounded">CERTAINTY_BASE_URL</code> (defaults to {BASE}), <code className="bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code>. Errors: <code className="bg-neutral-100 px-1 rounded">APIError</code>, <code className="bg-neutral-100 px-1 rounded">ConnectionError</code>.
-          </p>
-        </section>
-
-        {/* Verifiable & interpretable AI */}
-        <section id="verifiable-ai" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Verifiable & interpretable AI</h2>
-          <p className="text-[15px] text-neutral-600 leading-relaxed mb-3">
-            In addition to <strong>reranking</strong> (pick the best candidate), you can get the <strong>energy score</strong> for any output via <code className="text-[13px] bg-neutral-100 px-1 rounded">POST /score</code>. Same EBM, no selection — just a numeric score per text. Use it to:
-          </p>
-          <ul className="text-sm text-neutral-600 space-y-1 list-disc list-inside mb-4">
-            <li><strong>Track confidence</strong> — log energy for every LLM response and monitor drift or low-confidence outputs.</li>
-            <li><strong>Audit reliability</strong> — attach scores to decisions for compliance and post-hoc review.</li>
-            <li><strong>Interpretability</strong> — lower energy = more constraint-satisfying; compare outputs or A/B runs with a single metric.</li>
-          </ul>
-          <CodeBlock
-            code={`# Score one or more outputs (order preserved)\nr = requests.post("${BASE}/score", json={"texts": [my_llm_output], "prompt": user_prompt}).json()\nlog_confidence(request_id, r["energies"][0])  # lower = higher confidence`}
-            lang="python"
-          />
-          <p className="text-xs text-neutral-500 mt-2">
-            SDK: <code className="bg-neutral-100 px-1 rounded">client.score(texts=[...], prompt=...)</code> returns <code className="bg-neutral-100 px-1 rounded">ScoreResponse(energies=[...])</code>.
-          </p>
+        {/* Verifiable AI */}
+        <section id="verifiable-ai" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Score (confidence tracking)</h2>
+          <p className="text-sm text-neutral-600 mb-2"><code className="text-[12px] bg-neutral-100 px-1 rounded">POST /score</code> — energy per output (no reranking). Lower = higher confidence. Use for logging, audit, A/B.</p>
+          <CodeBlock code={`client.score(texts=[out1, out2], prompt=q)  # → ScoreResponse(energies=[...])`} lang="python" />
         </section>
 
         {/* Endpoints */}
-        <section className="mb-14">
+        <section className="mb-12">
           <h2 className="text-xl font-semibold text-neutral-900 mb-6">Endpoints</h2>
           <div className="space-y-6">
             {endpoints.map((ep) => (
@@ -468,11 +386,9 @@ export default function DocsPage() {
         </section>
 
         {/* API Keys */}
-        <section id="ep-api-keys" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">API Key Management</h2>
-          <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            Manage keys in <strong>Platform → API Keys</strong>. Create keys, copy the raw value once, then use it as <code className="text-[13px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code>. Keys are scoped to your account. Once any key exists, all protected endpoints require auth.
-          </p>
+        <section id="ep-api-keys" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">API Key Management</h2>
+          <p className="text-sm text-neutral-600 mb-3">Platform → API Keys. Create, list, revoke. Raw key shown once.</p>
           <div className="space-y-4">
             <div className="border border-neutral-200 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-neutral-100 flex items-center gap-2">
@@ -499,50 +415,15 @@ export default function DocsPage() {
         </section>
 
         {/* Data Format */}
-        <section id="data-format" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">EORM Data Format</h2>
-          <p className="text-sm text-neutral-600 mb-3 leading-relaxed">
-            JSONL: one JSON object per line. Two options:
-          </p>
-          <ul className="text-sm text-neutral-600 mb-3 leading-relaxed list-disc list-inside space-y-1">
-            <li>
-              <strong>Labeled candidates (classic EORM):</strong>{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">question</code>,{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">label</code> (0 or 1),{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">gen_text</code>. Same question = one group for
-              Bradley–Terry loss.
-            </li>
-            <li>
-              <strong>Preference pairs:</strong>{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">question</code>,{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">preferred</code>,{' '}
-              <code className="text-[13px] bg-neutral-100 px-1 rounded">unpreferred</code>. The trainer automatically
-              converts this into two candidates with labels 1/0.
-            </li>
-          </ul>
-          <CodeBlock
-            code={`{"question": "What is 2+2?", "label": 1, "gen_text": "The answer is 4."}\n{"question": "What is 2+2?", "label": 0, "gen_text": "The answer is 5."}\n{"question": "What is 2+2?", "preferred": "The answer is 4.", "unpreferred": "The answer is 5."}`}
-            lang="jsonl"
-          />
-        </section>
-
-        {/* Generating Data Externally */}
-        <section id="data-external" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Generating your own data externally</h2>
-          <p className="text-sm text-neutral-600 mb-3 leading-relaxed">
-            If you need to create training data yourself: either (a) output labeled candidates (question, label, gen_text){' '}
-            or (b) output preference pairs (question, preferred, unpreferred). Export as JSONL and use{' '}
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">train_from_file</code> (SDK) or{' '}
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">POST /train</code> with{' '}
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">data</code> or{' '}
-            <code className="text-[13px] bg-neutral-100 px-1 rounded">data_path</code>. The trainer turns preferences into
-            labeled pairs internally.
-          </p>
+        <section id="data-format" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">EORM Format</h2>
+          <p className="text-sm text-neutral-600 mb-2">JSONL: <code className="text-[12px] bg-neutral-100 px-1 rounded">question</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">label</code> (0/1), <code className="text-[12px] bg-neutral-100 px-1 rounded">gen_text</code>. Or <code className="text-[12px] bg-neutral-100 px-1 rounded">preferred</code>/<code className="text-[12px] bg-neutral-100 px-1 rounded">unpreferred</code>.</p>
+          <CodeBlock code={`{"question": "What is 2+2?", "label": 1, "gen_text": "The answer is 4."}`} lang="json" />
         </section>
 
         {/* Errors */}
-        <section id="errors" className="mb-14 scroll-mt-24">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-3">Errors</h2>
+        <section id="errors" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Errors</h2>
           <p className="text-sm text-neutral-600 mb-2">JSON body with <code className="text-[13px] bg-neutral-100 px-1 rounded">detail</code>.</p>
           <ul className="text-xs text-neutral-600 space-y-1 list-disc list-inside">
             <li><strong>400</strong> — Empty candidates without openai_api_key/hf_model; bad request body.</li>
