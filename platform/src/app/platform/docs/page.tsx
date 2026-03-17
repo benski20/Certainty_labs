@@ -27,7 +27,7 @@ interface Endpoint {
 // ── Data ────────────────────────────────────────────────────────────
 
 const DEFAULT_API_BASE = 'https://certainty-labs.onrender.com'
-const BASE = process.env.NEXT_PUBLIC_CERTAINTY_BASE_URL || DEFAULT_API_BASE
+const BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_CERTAINTY_BASE_URL || DEFAULT_API_BASE
 
 const endpoints: Endpoint[] = [
   {
@@ -52,8 +52,8 @@ const endpoints: Endpoint[] = [
       { name: 'lr', type: 'float', required: false, default: '5e-5', desc: 'Learning rate.' },
     ],
     response: `{ "model_path": "./certainty_workspace/model/ebm_certainty_model.pt", "best_val_acc": 72.5, "epochs_trained": 20, "elapsed_seconds": 145.3 }`,
-    curl: `curl -X POST ${BASE}/train -H "Content-Type: application/json" -d '{"epochs": 10}'`,
-    python: `# Built-in (default gpt2 tokenizer)\ndefault = requests.post("${BASE}/train", json={"epochs": 10}).json()\n# Qwen/Llama: match tokenizer to your LLM\nr = requests.post("${BASE}/train", json={"data": records, "tokenizer_name": "qwen2.5-7b", "epochs": 15})`,
+    curl: `curl -X POST ${BASE}/train -H "Content-Type: application/json" -H "Authorization: Bearer ck_..." -d '{"epochs": 10}'`,
+    python: `# Built-in (default gpt2 tokenizer)\nheaders = {"Authorization": "Bearer ck_..."}\ndefault = requests.post("${BASE}/train", json={"epochs": 10}, headers=headers).json()\n# Qwen/Llama: match tokenizer to your LLM\nr = requests.post("${BASE}/train", json={"data": records, "tokenizer_name": "qwen2.5-7b", "epochs": 15}, headers=headers)`,
     sdk: `result = client.train(epochs=10)\nresult = client.train(tokenizer_name="qwen2.5-7b", epochs=10)\nresult = client.train_with_data(samples, tokenizer_name="llama-3.1-8b")\nresult = client.train_from_file("data.jsonl")`,
   },
   {
@@ -73,8 +73,8 @@ const endpoints: Endpoint[] = [
       { name: 'n_candidates', type: 'integer', required: false, default: '5', desc: 'Number of candidates when generating (openai or HF).' },
     ],
     response: `{ "best_candidate": "Best answer text.", "best_index": 0, "all_energies": [-1.42, 0.87, 2.31] }`,
-    curl: `# Your candidates\ncurl -X POST ${BASE}/rerank -H "Content-Type: application/json" -d '{"candidates": ["A", "B", "C"], "prompt": "What is 2+2?"}'\n# OpenAI-compatible LLM\ncurl -X POST ${BASE}/rerank -d '{"prompt": "What is 2+2?", "openai_api_key": "sk-...", "n_candidates": 5}'\n# Hugging Face (Qwen/Llama)\ncurl -X POST ${BASE}/rerank -d '{"prompt": "What is 2+2?", "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}'`,
-    python: `# Pre-generated\nr = requests.post("${BASE}/rerank", json={"candidates": ["A","B","C"], "prompt": q}).json()\n# OpenAI-compatible\nr = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}).json()\n# Hugging Face Qwen/Llama\nr = requests.post("${BASE}/rerank", json={"prompt": q, "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}).json()\nprint(r["best_candidate"])`,
+    curl: `# Your candidates\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"candidates": ["A", "B", "C"], "prompt": "What is 2+2?"}'\n# OpenAI-compatible LLM\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"prompt": "What is 2+2?", "openai_api_key": "sk-...", "n_candidates": 5}'\n# Hugging Face (Qwen/Llama)\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"prompt": "What is 2+2?", "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}'`,
+    python: `headers = {"Authorization": "Bearer ck_..."}\n# Pre-generated\nr = requests.post("${BASE}/rerank", json={"candidates": ["A","B","C"], "prompt": q}, headers=headers).json()\n# OpenAI-compatible\nr = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers=headers).json()\n# Hugging Face Qwen/Llama\nr = requests.post("${BASE}/rerank", json={"prompt": q, "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}, headers=headers).json()\nprint(r["best_candidate"])`,
     sdk: `best = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)\nbest = client.rerank(prompt=q, hf_model="qwen2.5-7b", hf_token="hf_...", n_candidates=5)\nprint(best.best_candidate)`,
   },
   {
@@ -88,8 +88,8 @@ const endpoints: Endpoint[] = [
       { name: 'tokenizer_path', type: 'string', required: false, desc: 'Path to tokenizer saved with the model.' },
     ],
     response: `{ "energies": [-1.42, 0.87, 2.31] }`,
-    curl: `curl -X POST ${BASE}/score -H "Content-Type: application/json" -d '{"texts": ["Output A", "Output B"], "prompt": "What is 2+2?"}'`,
-    python: `r = requests.post("${BASE}/score", json={"texts": [out1, out2], "prompt": q}).json()\nprint(r["energies"])  # log, audit, track confidence`,
+    curl: `curl -X POST ${BASE}/score -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"texts": ["Output A", "Output B"], "prompt": "What is 2+2?"}'`,
+    python: `r = requests.post("${BASE}/score", json={"texts": [out1, out2], "prompt": q}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["energies"])  # log, audit, track confidence`,
     sdk: `scores = client.score(texts=[out1, out2], prompt=q)\nprint(scores.energies)  # lower = higher confidence`,
   },
   {
@@ -104,8 +104,8 @@ const endpoints: Endpoint[] = [
       { name: 'candidates', type: 'string[]', required: false, desc: 'If set, rerank these after training.' },
     ],
     response: `{ "train": { "model_path": "...", "best_val_acc": 68, "elapsed_seconds": 82 }, "rerank": { "best_candidate": "..." } or null }`,
-    curl: `curl -X POST ${BASE}/pipeline -H "Content-Type: application/json" -d '{"epochs": 10}'`,
-    python: `r = requests.post("${BASE}/pipeline", json={"epochs": 10, "tokenizer_name": "qwen2.5-7b"}).json()\nprint(r["train"]["best_val_acc"])`,
+    curl: `curl -X POST ${BASE}/pipeline -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"epochs": 10}'`,
+    python: `r = requests.post("${BASE}/pipeline", json={"epochs": 10, "tokenizer_name": "qwen2.5-7b"}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["train"]["best_val_acc"])`,
     sdk: `result = client.pipeline(epochs=10, tokenizer_name="llama-3.1-8b", candidates=["A", "B"])\nprint(result.train.best_val_acc)`,
   },
 ]
@@ -235,23 +235,6 @@ function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
 
 // ── Page ────────────────────────────────────────────────────────────
 
-const navItems = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'qwen-llama', label: 'Qwen & Llama' },
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'quickstart', label: 'Quickstart' },
-  { id: 'sdk', label: 'Python SDK' },
-  { id: 'ep-health', label: '/health' },
-  { id: 'ep-train', label: '/train' },
-  { id: 'ep-rerank', label: '/rerank' },
-  { id: 'ep-score', label: '/score' },
-  { id: 'ep-pipeline', label: '/pipeline' },
-  { id: 'ep-api-keys', label: '/api-keys' },
-  { id: 'data-format', label: 'Data Format' },
-  { id: 'data-external', label: 'Generating Data Externally' },
-  { id: 'errors', label: 'Errors' },
-]
-
 const onThisPageItems = [
   { id: 'overview', label: 'Overview' },
   { id: 'qwen-llama', label: 'Qwen & Llama' },
@@ -300,49 +283,15 @@ export default function DocsPage() {
       </header>
 
       <div className="flex flex-1">
-        {/* Left sidebar — hierarchical nav */}
-        <nav className="hidden lg:block w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-r border-neutral-100 py-6 px-4 bg-neutral-50/30">
-          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-widest mb-3 px-2">
-            API Reference
-          </p>
-          <ul className="space-y-0.5 text-sm">
-            {navItems.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  className={`block py-2 px-2 rounded-md transition-colors ${
-                    item.id.startsWith('ep-')
-                      ? 'font-mono text-[13px] text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-                  }`}
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 pt-4 border-t border-neutral-200">
-            <a
-              href={`${BASE}/docs`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-[13px] text-neutral-500 hover:text-blue-600 transition-colors px-2"
-            >
-              Swagger UI
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </nav>
-
         {/* Center content */}
-      <div className="flex-1 min-w-0 max-w-3xl px-8 py-10">
+      <div className="flex-1 min-w-0 max-w-3xl px-8 py-10 mx-auto">
         {/* Page title */}
         <div className="mb-10">
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">API Reference</h1>
           <p className="text-[15px] text-neutral-600 mt-2 leading-relaxed">
-            Train TransEBM scorers, bring your own data or LLM, and rerank LLM outputs for constraint-correct answers.
+            Train TransEBM energy models, score and rerank LLM outputs. Production-ready: create API keys in the dashboard, use Bearer auth, deploy to Modal/AWS/Azure.
           </p>
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-xs text-neutral-500">Base URL</span>
               <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">{BASE}</code>
@@ -360,10 +309,13 @@ export default function DocsPage() {
           <div className="text-sm text-neutral-600 leading-relaxed space-y-3">
             <p>
               Certainty trains TransEBM energy models that score LLM outputs (lower energy = more likely correct).
-              Use <strong>your own data</strong> (in-memory or JSONL) or the <strong>built-in GSM8K</strong> dataset; <strong>tune training</strong> (epochs, d_model, lr, etc.); use <strong>your own LLM</strong> in rerank to generate candidates (OpenAI-compatible or <strong>Hugging Face Qwen/Llama</strong>).
+              Use <strong>your own data</strong> (in-memory or JSONL) or the <strong>built-in GSM8K</strong> dataset; <strong>tune training</strong> (epochs, d_model, lr); use <strong>your own LLM</strong> in rerank (OpenAI-compatible or <strong>Hugging Face Qwen/Llama</strong>).
             </p>
             <p>
-              You provide EORM-format training data (question, label 0/1, gen_text). Generate it externally if needed (see &quot;Generating Data Externally&quot; below).
+              <strong>Production:</strong> Create API keys in Platform → API Keys. Set <code className="text-[13px] bg-neutral-100 px-1 rounded">CERTAINTY_BASE_URL</code> and <code className="text-[13px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> in your environment. Deploy the API to Modal, AWS, or Azure (see docs).
+            </p>
+            <p>
+              Training data: EORM format (question, label 0/1, gen_text). Generate externally if needed (see &quot;Generating Data Externally&quot;).
             </p>
           </div>
 
@@ -424,14 +376,14 @@ export default function DocsPage() {
         <section id="authentication" className="mb-14 scroll-mt-24">
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">Authentication</h2>
           <p className="text-[15px] text-neutral-600 leading-relaxed mb-4">
-            Bearer API keys via <a href="#ep-api-keys" className="text-blue-600 hover:underline font-mono text-[13px]">/api-keys</a>. When no keys exist, all endpoints are open (local dev). After creating a key, pass it in every request.
+            Create API keys in the <strong>Platform → API Keys</strong> dashboard. Pass the key as <code className="text-[13px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code> on every request. When no keys exist, endpoints are open (local dev only).
           </p>
           <CodeBlock
-            code={`# Header (recommended)\ncurl -H "Authorization: Bearer ck_..." ${BASE}/health\n\n# SDK\nfrom certaintylabs import Certainty\nclient = Certainty(api_key="ck_...")`}
+            code={`# Header (recommended)\ncurl -H "Authorization: Bearer ck_..." ${BASE}/health\n\n# SDK (reads CERTAINTY_API_KEY from env)\nfrom certaintylabs import Certainty\nclient = Certainty()`}
             lang="bash"
           />
           <p className="text-sm text-amber-800 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <strong>Note:</strong> The raw key is returned only once from <code className="text-[11px] bg-white px-1 rounded">POST /api-keys</code>. Store it securely; only a hash is saved.
+            <strong>Production:</strong> Store keys securely. The raw key is shown only once at creation. Use environment variables (<code className="text-[11px] bg-white px-1 rounded">CERTAINTY_API_KEY</code>) — never commit keys to source control.
           </p>
         </section>
 
@@ -439,27 +391,27 @@ export default function DocsPage() {
         <section id="quickstart" className="mb-14 scroll-mt-24">
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">Quickstart</h2>
           <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            Use the hosted Certainty API — no local server required.
+            Use the hosted Certainty API. Create an API key in <strong>Platform → API Keys</strong>, then set your environment.
           </p>
           <div className="space-y-3">
             <div>
-              <p className="text-xs font-medium text-neutral-500 mb-1.5">1. Set environment</p>
+              <p className="text-xs font-medium text-neutral-500 mb-1.5">1. Create key & set environment</p>
               <CodeBlock
-                code={`export CERTAINTY_BASE_URL="${BASE}"\nexport CERTAINTY_API_KEY="ck_..."  # from /api-keys`}
+                code={`# Create key in Platform → API Keys, then:\nexport CERTAINTY_BASE_URL="${BASE}"\nexport CERTAINTY_API_KEY="ck_..."`}
                 lang="bash"
               />
             </div>
             <div>
               <p className="text-xs font-medium text-neutral-500 mb-1.5">2. Train (built-in GSM8K)</p>
               <CodeBlock
-                code={`import requests\nr = requests.post("${BASE}/train", json={"epochs": 10}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["best_val_acc"], r["model_path"])`}
+                code={`import os\nimport requests\napi_key = os.environ["CERTAINTY_API_KEY"]\nheaders = {"Authorization": f"Bearer {api_key}"}\nr = requests.post("${BASE}/train", json={"epochs": 10}, headers=headers).json()\nprint(r["best_val_acc"], r["model_path"])`}
                 lang="python"
               />
             </div>
             <div>
               <p className="text-xs font-medium text-neutral-500 mb-1.5">3. Rerank (your candidates or your LLM)</p>
               <CodeBlock
-                code={`# Option A: you provide candidates\nbest = requests.post("${BASE}/rerank", json={"candidates": ["A", "B", "C"], "prompt": q}, headers={"Authorization": "Bearer ck_..."}).json()\n# Option B: API generates with your LLM then reranks\nbest = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(best["best_candidate"])`}
+                code={`# Option A: you provide candidates\nbest = requests.post("${BASE}/rerank", json={"candidates": ["A", "B", "C"], "prompt": q}, headers=headers).json()\n# Option B: API generates with your LLM then reranks\nbest = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers=headers).json()\nprint(best["best_candidate"])`}
                 lang="python"
               />
             </div>
@@ -519,7 +471,7 @@ export default function DocsPage() {
         <section id="ep-api-keys" className="mb-14 scroll-mt-24">
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">API Key Management</h2>
           <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-            Create, list, revoke keys. Endpoints are public until the first key exists; then others require auth.
+            Manage keys in <strong>Platform → API Keys</strong>. Create keys, copy the raw value once, then use it as <code className="text-[13px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code>. Keys are scoped to your account. Once any key exists, all protected endpoints require auth.
           </p>
           <div className="space-y-4">
             <div className="border border-neutral-200 rounded-lg overflow-hidden">
@@ -527,21 +479,21 @@ export default function DocsPage() {
                 <MethodBadge method="POST" /><code className="text-sm font-mono">/api-keys</code>
                 <span className="text-xs text-neutral-400">Create key (body: name). Returns id, key (once), prefix, created_at.</span>
               </div>
-              <div className="px-4 py-2"><CodeBlock code={`curl -X POST ${BASE}/api-keys -H "Content-Type: application/json" -d '{"name": "prod"}'`} lang="bash" /></div>
+              <div className="px-4 py-2"><CodeBlock code={`curl -X POST ${BASE}/api-keys -H "Content-Type: application/json" -H "Authorization: Bearer ck_..." -d '{"name": "prod"}'`} lang="bash" /></div>
             </div>
             <div className="border border-neutral-200 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-neutral-100 flex items-center gap-2">
                 <MethodBadge method="GET" /><code className="text-sm font-mono">/api-keys</code>
-                <span className="text-xs text-neutral-400">List keys (id, name, prefix, created_at).</span>
+                <span className="text-xs text-neutral-400">List your keys (id, name, prefix, created_at). Requires auth.</span>
               </div>
-              <div className="px-4 py-2"><CodeBlock code={`curl ${BASE}/api-keys`} lang="bash" /></div>
+              <div className="px-4 py-2"><CodeBlock code={`curl ${BASE}/api-keys -H "Authorization: Bearer ck_..."`} lang="bash" /></div>
             </div>
             <div className="border border-neutral-200 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-neutral-100 flex items-center gap-2">
                 <MethodBadge method="DELETE" /><code className="text-sm font-mono">/api-keys/{'{key_id}'}</code>
                 <span className="text-xs text-neutral-400">Revoke key. Returns deleted, auth_enabled.</span>
               </div>
-              <div className="px-4 py-2"><CodeBlock code={`curl -X DELETE ${BASE}/api-keys/KEY_ID`} lang="bash" /></div>
+              <div className="px-4 py-2"><CodeBlock code={`curl -X DELETE ${BASE}/api-keys/KEY_ID -H "Authorization: Bearer ck_..."`} lang="bash" /></div>
             </div>
           </div>
         </section>
@@ -593,11 +545,12 @@ export default function DocsPage() {
           <h2 className="text-xl font-semibold text-neutral-900 mb-3">Errors</h2>
           <p className="text-sm text-neutral-600 mb-2">JSON body with <code className="text-[13px] bg-neutral-100 px-1 rounded">detail</code>.</p>
           <ul className="text-xs text-neutral-600 space-y-1 list-disc list-inside">
-            <li><strong>400</strong> — Empty candidates without openai_api_key, bad body.</li>
-            <li><strong>401</strong> — Missing/invalid API key (when auth enabled).</li>
+            <li><strong>400</strong> — Empty candidates without openai_api_key/hf_model; bad request body.</li>
+            <li><strong>401</strong> — Missing or invalid API key (when auth enabled). Create a key in Platform → API Keys.</li>
             <li><strong>404</strong> — Model file or key id not found.</li>
-            <li><strong>422</strong> — Validation (types, required fields).</li>
-            <li><strong>500</strong> — Training/model/exception.</li>
+            <li><strong>422</strong> — Validation error (types, required fields).</li>
+            <li><strong>500</strong> — Server error (training, model, or exception).</li>
+            <li><strong>502</strong> — Backend unavailable (cold start, timeout). Retry in a moment.</li>
           </ul>
           <CodeBlock code={`{"detail": "Model not found: ..."}`} lang="json" />
         </section>
