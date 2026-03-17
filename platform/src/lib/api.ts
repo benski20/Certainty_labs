@@ -97,7 +97,7 @@ export const api = {
   health: () => apiRequest<HealthResponse>('/health'),
 
   keys: {
-    // Always use proxy so server attaches X-User-ID from session. Ensures user isolation.
+    // Read/write Supabase api_keys directly, filtered by user_id from session.
     create: (name: string) =>
       apiRequest<CreateKeyResponse>('/api/keys', {
         method: 'POST',
