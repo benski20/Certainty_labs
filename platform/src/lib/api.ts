@@ -79,20 +79,33 @@ export const api = {
   health: () => apiRequest<HealthResponse>('/health'),
 
   keys: {
-    // Use proxy (/api/keys) so the server attaches X-User-ID from the Supabase session.
-    create: (name: string) =>
-      apiRequest<CreateKeyResponse>('/api/keys', {
-        method: 'POST',
-        body: JSON.stringify({ name: name || 'default' }),
-        baseUrl: '',
-      }),
-    list: () =>
-      apiRequest<ListKeysResponse>('/api/keys', { baseUrl: '' }),
-    delete: (id: string) =>
-      apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api/keys/${id}`, {
-        method: 'DELETE',
-        baseUrl: '',
-      }),
+    // When userId is provided, call backend directly (fast). Otherwise use proxy for server-side session.
+    create: (name: string, userId?: string) =>
+      userId
+        ? apiRequest<CreateKeyResponse>('/api-keys', {
+            method: 'POST',
+            body: JSON.stringify({ name: name || 'default' }),
+            userId,
+          })
+        : apiRequest<CreateKeyResponse>('/api/keys', {
+            method: 'POST',
+            body: JSON.stringify({ name: name || 'default' }),
+            baseUrl: '',
+          }),
+    list: (userId?: string) =>
+      userId
+        ? apiRequest<ListKeysResponse>('/api-keys', { userId })
+        : apiRequest<ListKeysResponse>('/api/keys', { baseUrl: '' }),
+    delete: (id: string, userId?: string) =>
+      userId
+        ? apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api-keys/${id}`, {
+            method: 'DELETE',
+            userId,
+          })
+        : apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api/keys/${id}`, {
+            method: 'DELETE',
+            baseUrl: '',
+          }),
   },
 
   train: (config: {
