@@ -31,8 +31,8 @@ def _is_supabase_configured() -> bool:
 
 
 def _get_user_id(request: Request) -> str | None:
-    """Return X-User-ID. When Supabase is used, require it (raise 401 if missing)."""
-    user_id = request.headers.get("x-user-id") or None
+    """Return X-User-ID. Require it when Supabase is used so each user only sees their own keys."""
+    user_id = (request.headers.get("x-user-id") or "").strip() or None
     if _is_supabase_configured() and not user_id:
         raise HTTPException(
             status_code=401,

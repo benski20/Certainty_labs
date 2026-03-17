@@ -55,12 +55,40 @@ export default function ApiKeysPage() {
     return () => { cancelled = true }
   }, [])
 
+  function fetchKeys() {
+    setLoading(true)
+    setError(null)
+    api.keys
+      .list()
+      .then((res) => setKeys(res.keys))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (msg.includes('Sign in required')) {
+          router.push('/auth?next=/platform/keys')
+          return
+        }
+        const isNetwork = msg === 'Failed to fetch'
+        const isProductionUsingLocalhost =
+          typeof window !== 'undefined' &&
+          !window.location.hostname.includes('localhost') &&
+          API_BASE.includes('localhost')
+        setError(
+          isNetwork && isProductionUsingLocalhost
+            ? 'The app is configured to use the local API (localhost). In production, set NEXT_PUBLIC_API_URL to your API URL in Vercel: Project → Settings → Environment Variables. Then redeploy.'
+            : isNetwork
+              ? `Cannot reach API at ${API_BASE}. Is the server running? (Start with: uvicorn api.main:app --reload)`
+              : msg
+        )
+      })
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     api.keys
-      .list(userId ?? undefined)
+      .list()
       .then((res) => {
         if (!cancelled) setKeys(res.keys)
       })
@@ -100,7 +128,7 @@ export default function ApiKeysPage() {
     setCreating(true)
     setError(null)
     try {
-      const res = await api.keys.create(newKeyName.trim(), userId ?? undefined)
+      const res = await api.keys.create(newKeyName.trim())
       setNewKeyReveal({
         id: res.id,
         name: res.name,
@@ -141,7 +169,7 @@ export default function ApiKeysPage() {
     setDeletingId(id)
     setError(null)
     try {
-      await api.keys.delete(id, userId ?? undefined)
+      await api.keys.delete(id)
       setKeys((prev) => prev.filter((k) => k.id !== id))
       if (newKeyReveal?.id === id) setNewKeyReveal(null)
     } catch (e) {
@@ -198,9 +226,17 @@ export default function ApiKeysPage() {
       </p>
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-800">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
+        <div className="mb-4 flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-800">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => fetchKeys()}
+            className="shrink-0 rounded-md bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-200"
+          >
+            Retry
+          </button>
         </div>
       )}
 

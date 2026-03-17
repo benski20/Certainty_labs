@@ -20,8 +20,26 @@ export async function apiRequest<T>(
   })
 
   if (!res.ok) {
-    const error = await res.text().catch(() => `HTTP ${res.status}`)
-    throw new Error(error)
+    const text = await res.text().catch(() => `HTTP ${res.status}`)
+    let msg: string
+    if (res.status === 502) {
+      msg = 'Backend unavailable (502). The API may be starting up or temporarily down. Try again in a moment.'
+    } else if (res.status === 404) {
+      try {
+        const json = JSON.parse(text) as { detail?: string }
+        msg = json.detail ?? text
+      } catch {
+        msg = text || 'Not found'
+      }
+    } else {
+      try {
+        const json = JSON.parse(text) as { detail?: string }
+        msg = json.detail ?? text
+      } catch {
+        msg = text
+      }
+    }
+    throw new Error(msg)
   }
 
   return res.json()
@@ -79,33 +97,20 @@ export const api = {
   health: () => apiRequest<HealthResponse>('/health'),
 
   keys: {
-    // When userId is provided, call backend directly (fast). Otherwise use proxy for server-side session.
-    create: (name: string, userId?: string) =>
-      userId
-        ? apiRequest<CreateKeyResponse>('/api-keys', {
-            method: 'POST',
-            body: JSON.stringify({ name: name || 'default' }),
-            userId,
-          })
-        : apiRequest<CreateKeyResponse>('/api/keys', {
-            method: 'POST',
-            body: JSON.stringify({ name: name || 'default' }),
-            baseUrl: '',
-          }),
-    list: (userId?: string) =>
-      userId
-        ? apiRequest<ListKeysResponse>('/api-keys', { userId })
-        : apiRequest<ListKeysResponse>('/api/keys', { baseUrl: '' }),
-    delete: (id: string, userId?: string) =>
-      userId
-        ? apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api-keys/${id}`, {
-            method: 'DELETE',
-            userId,
-          })
-        : apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api/keys/${id}`, {
-            method: 'DELETE',
-            baseUrl: '',
-          }),
+    // Always use proxy so server attaches X-User-ID from session. Ensures user isolation.
+    create: (name: string) =>
+      apiRequest<CreateKeyResponse>('/api/keys', {
+        method: 'POST',
+        body: JSON.stringify({ name: name || 'default' }),
+        baseUrl: '',
+      }),
+    list: () =>
+      apiRequest<ListKeysResponse>('/api/keys', { baseUrl: '' }),
+    delete: (id: string) =>
+      apiRequest<{ deleted: string; auth_enabled: boolean }>(`/api/keys/${id}`, {
+        method: 'DELETE',
+        baseUrl: '',
+      }),
   },
 
   train: (config: {
