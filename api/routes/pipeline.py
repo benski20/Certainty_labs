@@ -2,34 +2,22 @@
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas import PipelineRequest, PipelineResponse, RerankResponse, TrainResponse
+from api.schemas import PipelineRequest, PipelineResponse, RerankResponse, TrainRequest, TrainResponse
 
 router = APIRouter()
 
 
-def _resolve_tokenizer(name: str | None) -> str:
-    if not name:
-        return "gpt2"
-    from certainty.models.supported_models import resolve_tokenizer_name
-    return resolve_tokenizer_name(name)
-
-
 @router.post("/pipeline", response_model=PipelineResponse)
 async def run_pipeline(req: PipelineRequest):
+    from api.routes.train import train_model
     from certainty.pipeline import CertaintyPipeline
-    from certainty.models.trainer import TrainingConfig
 
     try:
-        pipeline = CertaintyPipeline()
-
-        if req.data is not None:
-            pipeline.load_data_records(req.data)
-        elif req.data_path:
-            pipeline.load_data(req.data_path)
-        # else: trainer uses built-in GSM8K dataset
-
-        train_config = TrainingConfig(
-            tokenizer_name=_resolve_tokenizer(req.tokenizer_name),
+        train_req = TrainRequest(
+            data_path=req.data_path,
+            data=req.data,
+            tokenizer_name=req.tokenizer_name,
+            gpu=req.gpu,
             epochs=req.epochs,
             batch_size=req.batch_size,
             d_model=req.d_model,
@@ -40,16 +28,12 @@ async def run_pipeline(req: PipelineRequest):
             validate_every=req.validate_every,
             val_holdout=req.val_holdout,
         )
-        metrics = pipeline.train(config=train_config)
-        train_resp = TrainResponse(
-            model_path=metrics["model_path"],
-            best_val_acc=metrics["best_val_acc"],
-            epochs_trained=metrics["epochs_trained"],
-            elapsed_seconds=metrics["elapsed_seconds"],
-        )
+        train_resp = await train_model(train_req)
 
         rerank_resp = None
         if req.candidates:
+            pipeline = CertaintyPipeline()
+            pipeline.load_model(train_resp.model_path)
             best, best_idx, energies = pipeline.rerank(req.candidates, "")
             rerank_resp = RerankResponse(
                 best_candidate=best,

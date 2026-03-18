@@ -99,10 +99,18 @@ This avoids “works only locally / lost on restart” behavior.
 
 ## 7. Optional: different GPU or longer timeout
 
-Edit `modal_app.py`:
+Set the `MODAL_GPU` environment variable before deploying:
 
-- **GPU:** Change `gpu="T4"` to e.g. `gpu="A10"`, `gpu="L4"`, or `gpu="A100"` (see [Modal GPU options](https://modal.com/docs/guide/gpu)).
-- **Timeout:** Increase `timeout=3600` (seconds) if training runs longer.
+```bash
+export MODAL_GPU=A10   # or T4, L4, A100
+modal deploy modal_app.py
+```
+
+Supported values: `T4`, `L4`, `A10`, `A100` (see [Modal GPU options](https://modal.com/docs/guide/gpu)). Default is `A10` for faster training.
+
+**Runtime GPU selection:** Users can also pass `gpu="A100"` (or `T4`, `L4`, `A10`, etc.) when calling `client.train()` or `client.pipeline()` to select the GPU per request.
+
+To change the timeout, edit `modal_app.py` and increase `timeout=3600` (seconds).
 
 Redeploy after changes.
 

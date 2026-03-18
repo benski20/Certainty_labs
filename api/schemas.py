@@ -46,6 +46,7 @@ class TrainRequest(BaseModel):
     data_path: Optional[str] = None
     data: Optional[List[Dict[str, Any]]] = None
     tokenizer_name: Optional[str] = None  # HuggingFace ID or alias: Qwen/*, meta-llama/*, or gpt2
+    gpu: Optional[str] = None  # GPU type at runtime: T4, A10, L4, A100, etc. Default from deployment.
     epochs: int = 20
     batch_size: int = 1
     d_model: int = 768
@@ -110,6 +111,7 @@ class PipelineRequest(BaseModel):
     data_path: Optional[str] = None
     data: Optional[List[Dict[str, Any]]] = None
     tokenizer_name: Optional[str] = None  # HuggingFace ID or alias for Qwen/Llama compatibility
+    gpu: Optional[str] = None  # GPU type at runtime: T4, A10, L4, A100, etc.
     epochs: int = 10
     batch_size: int = 1
     d_model: int = 768

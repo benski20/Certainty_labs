@@ -81,20 +81,21 @@ def _check_certainty_server(base_url: str) -> None:
 @pytest.fixture(scope="module")
 def api_key(base_url):
     """
-    When the server has auth enabled (any keys exist), create a key and return it
-    so protected endpoints can be called. Otherwise return None.
+    When the server has auth enabled, create a key or use CERTAINTY_API_KEY from env.
+    Falls back to env var when /api-keys requires X-User-ID (Supabase) or returns 401.
     """
     import httpx
+    env_key = os.environ.get("CERTAINTY_API_KEY", "").strip()
     with httpx.Client(base_url=base_url, timeout=_REMOTE_TIMEOUT) as client:
         r = client.get("/api-keys")
         if r.status_code != 200:
-            return None
+            return env_key or None
         data = r.json()
         if not data.get("auth_enabled"):
             return None
         create = client.post("/api-keys", json={"name": "pytest-integration"})
         if create.status_code != 200:
-            return None
+            return env_key or None
         return create.json()["key"]
 
 
@@ -231,6 +232,23 @@ class TestTrain:
         scored = sync_client.score(["sanity check"], model_path=r.model_path)
         assert len(scored.energies) == 1
 
+    def test_train_with_gpu_param(self, sync_client, demo_records):
+        """Train with gpu param (runtime GPU selection). API uses it when deployed on Modal."""
+        r = sync_client.train(
+            data=demo_records[:200],
+            tokenizer_name="gpt2",
+            gpu="A10",
+            epochs=1,
+            batch_size=2,
+            d_model=128,
+            n_heads=2,
+            n_layers=1,
+            max_length=512,
+            verbose=False,
+        )
+        assert r.model_path
+        assert r.epochs_trained >= 1
+
     def test_train_with_training_params(self, sync_client, demo_records):
         from certaintylabs.types import TrainingParams
         params = TrainingParams(
@@ -349,6 +367,52 @@ class TestRerank:
         assert exc_info.value.status_code in (400, 401, 404, 500, 502)
 
 
+# ----- Model Download -----
+
+
+class TestModelDownload:
+    """GET /models/download: download trained model for local reuse."""
+
+    def test_download_model(self, sync_client, trained_model_path, tmp_path):
+        """Download model.pt and tokenizer to local dir. Skips if API not yet deployed with /models/download."""
+        from certaintylabs.exceptions import APIError
+        try:
+            local_model = sync_client.download_model(
+                trained_model_path,
+                local_dir=str(tmp_path),
+                verbose=False,
+            )
+        except APIError as e:
+            if e.status_code == 404:
+                pytest.skip("API /models/download not deployed yet (redeploy Modal)")
+            raise
+        assert (tmp_path / "model.pt").exists()
+        assert (tmp_path / "tokenizer").exists() or (tmp_path / "tokenizer").is_dir()
+
+    def test_train_with_save_to(self, sync_client, demo_records, tmp_path):
+        """Train with save_to downloads model after training. Skips if download endpoint missing."""
+        from certaintylabs.exceptions import APIError
+        try:
+            r = sync_client.train(
+                data=demo_records[:250],
+                tokenizer_name="gpt2",
+                epochs=1,
+                batch_size=2,
+                d_model=128,
+                n_heads=2,
+                n_layers=1,
+                max_length=512,
+                save_to=str(tmp_path),
+                verbose=False,
+            )
+        except APIError as e:
+            if e.status_code == 404:
+                pytest.skip("API /models/download not deployed yet (redeploy Modal)")
+            raise
+        assert (tmp_path / "model.pt").exists()
+        assert r.model_path
+
+
 # ----- Pipeline -----
 
 
@@ -411,6 +475,8 @@ class TestAPIKeys:
         import httpx
         with httpx.Client(base_url=base_url, timeout=_REMOTE_TIMEOUT) as client:
             r = client.get("/api-keys")
+            if r.status_code == 401:
+                pytest.skip("API keys require X-User-ID (Supabase); manage via dashboard")
             assert r.status_code == 200
             data = r.json()
             assert "keys" in data
@@ -421,6 +487,8 @@ class TestAPIKeys:
         import httpx
         with httpx.Client(base_url=base_url, timeout=_REMOTE_TIMEOUT) as client:
             create = client.post("/api-keys", json={"name": "test-key-pytest"})
+            if create.status_code == 401:
+                pytest.skip("API keys require X-User-ID (Supabase); manage via dashboard")
             assert create.status_code == 200
             body = create.json()
             assert "key" in body

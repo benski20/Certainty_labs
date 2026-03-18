@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
+import threading
 import time
+import zipfile
+from pathlib import Path
+from urllib.parse import quote
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -21,6 +26,14 @@ from certaintylabs.types import (
     TrainResponse,
     TrainingParams,
 )
+
+try:
+    from rich.console import Console
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.panel import Panel
+    _RICH_AVAILABLE = True
+except ImportError:
+    _RICH_AVAILABLE = False
 
 # Fixed API base URL — users do not configure this.
 _BASE_URL = "https://sandboxtesting101--certainty-labs-api.modal.run"
@@ -112,6 +125,113 @@ class Certainty:
         logger.debug("Parsed JSON %s %s: %s", method, path, str(data)[:300] + "…" if len(str(data)) > 300 else str(data))
         return data
 
+    def _request_with_progress(
+        self,
+        method: str,
+        path: str,
+        message: str,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Run a long request with a progress spinner if verbose and rich is available."""
+        result: list = []
+        exc: list = []
+
+        def _do_request() -> None:
+            try:
+                data = self._request(method, path, **kwargs)
+                result.append(data)
+            except Exception as e:
+                exc.append(e)
+
+        if verbose and _RICH_AVAILABLE:
+            console = Console()
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task(message, total=None)
+                t = threading.Thread(target=_do_request)
+                t.start()
+                while t.is_alive():
+                    t.join(timeout=0.5)
+                    progress.update(task, description=f"{message} (elapsed: {progress.tasks[0].elapsed:.0f}s)")
+                if exc:
+                    raise exc[0]
+                return result[0]
+        else:
+            return self._request(method, path, **kwargs)
+
+    def download_model(
+        self,
+        model_path: str,
+        local_dir: str = ".",
+        verbose: bool = True,
+    ) -> str:
+        """Download a trained model and tokenizer to a local directory.
+
+        Extracts model.pt, tokenizer/, and metrics.json (if present) to local_dir.
+        Returns the path to the extracted model.pt.
+        """
+        local_path = Path(local_dir)
+        local_path.mkdir(parents=True, exist_ok=True)
+
+        headers: Dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        url = f"{self.base_url}/models/download?path={quote(model_path, safe='')}"
+        result_container: List[Any] = []
+        exc_container: List[BaseException] = []
+
+        def _do_get() -> None:
+            try:
+                result_container.append(
+                    self._client.get(url, headers=headers, timeout=self.timeout)
+                )
+            except BaseException as e:
+                exc_container.append(e)
+
+        if verbose and _RICH_AVAILABLE:
+            console = Console()
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task("Downloading model...", total=None)
+                t = threading.Thread(target=_do_get)
+                t.start()
+                while t.is_alive():
+                    t.join(timeout=0.5)
+                    progress.update(task, description=f"Downloading... (elapsed: {progress.tasks[0].elapsed:.0f}s)")
+            if exc_container:
+                raise exc_container[0]
+            resp = result_container[0]
+        else:
+            resp = self._client.get(url, headers=headers, timeout=self.timeout)
+
+        if resp.status_code >= 400:
+            body = {}
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                try:
+                    body = resp.json()
+                except json.JSONDecodeError:
+                    pass
+            raise APIError(
+                status_code=resp.status_code,
+                detail=body.get("detail", resp.text or "(empty response)"),
+            )
+
+        with zipfile.ZipFile(io.BytesIO(resp.content), "r") as zf:
+            zf.extractall(local_path)
+
+        model_pt = local_path / "model.pt"
+        if verbose and _RICH_AVAILABLE:
+            console.print(Panel(f"Model saved to [green]{local_path.absolute()}[/green]", title="Done"))
+        return str(model_pt)
+
     # ── Endpoints ─────────────────────────────────────────────────────
 
     def health(self) -> HealthResponse:
@@ -126,6 +246,7 @@ class Certainty:
         data_path: Optional[str] = None,
         data: Optional[List[Dict[str, Any]]] = None,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -136,6 +257,8 @@ class Certainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
+        verbose: bool = True,
     ) -> TrainResponse:
         """Train a TransEBM energy model.
 
@@ -146,6 +269,8 @@ class Certainty:
 
         Use ``tokenizer_name`` for Qwen/Llama compatibility (e.g. ``qwen2.5-7b``, ``llama-3.1-8b`` or full HF ID).
         Use ``training_params`` to pass a TrainingParams object; explicit kwargs override.
+        Use ``save_to`` to download the model to a local directory after training (e.g. ``save_to="./my_model"``).
+        Use ``gpu`` to select GPU at runtime (e.g. ``gpu="A10"``, ``gpu="A100"``). T4, L4, A10, A100, L40S, H100.
         """
         payload: Dict[str, Any] = {
             "epochs": epochs,
@@ -160,6 +285,8 @@ class Certainty:
         }
         if tokenizer_name is not None:
             payload["tokenizer_name"] = tokenizer_name
+        if gpu is not None:
+            payload["gpu"] = gpu
         if training_params:
             for k, v in vars(training_params).items():
                 if v is not None:
@@ -169,20 +296,36 @@ class Certainty:
         if data is not None:
             payload["data"] = data
 
-        logger.info("train(epochs=%d, data=%s)", epochs, "provided" if (data is not None or data_path is not None) else "built-in")
-        data_resp = self._request("POST", "/train", json=payload)
-        return TrainResponse(
+        data_src = "provided" if (data is not None or data_path is not None) else "built-in"
+        msg = f"Training on server (epochs={epochs}, data={data_src})..."
+        logger.info("train(epochs=%d, data=%s)", epochs, data_src)
+        data_resp = self._request_with_progress("POST", "/train", msg, verbose=verbose, json=payload)
+
+        result = TrainResponse(
             model_path=data_resp["model_path"],
             best_val_acc=data_resp["best_val_acc"],
             epochs_trained=data_resp["epochs_trained"],
             elapsed_seconds=data_resp["elapsed_seconds"],
         )
 
+        if verbose and _RICH_AVAILABLE:
+            console = Console()
+            console.print(
+                f"  [green]Done[/green]: {result.best_val_acc:.1f}% val acc in {result.elapsed_seconds:.0f}s "
+                f"→ model at {result.model_path}"
+            )
+
+        if save_to:
+            self.download_model(result.model_path, local_dir=save_to, verbose=verbose)
+
+        return result
+
     def train_with_data(
         self,
         samples: List[Dict[str, Any]],
         *,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -193,11 +336,14 @@ class Certainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
+        verbose: bool = True,
     ) -> TrainResponse:
         """Train on in-memory data. Each item in ``samples`` should have keys: question, label, gen_text."""
         return self.train(
             data=samples,
             tokenizer_name=tokenizer_name,
+            gpu=gpu,
             epochs=epochs,
             batch_size=batch_size,
             d_model=d_model,
@@ -208,6 +354,8 @@ class Certainty:
             validate_every=validate_every,
             val_holdout=val_holdout,
             training_params=training_params,
+            save_to=save_to,
+            verbose=verbose,
         )
 
     def train_from_file(
@@ -215,6 +363,7 @@ class Certainty:
         path: str,
         *,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -225,6 +374,8 @@ class Certainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
+        verbose: bool = True,
     ) -> TrainResponse:
         """Train on a local EORM JSONL file. Reads the file and sends records to the API."""
         logger.info("train_from_file(path=%s)", path)
@@ -238,6 +389,7 @@ class Certainty:
         return self.train_with_data(
             records,
             tokenizer_name=tokenizer_name,
+            gpu=gpu,
             epochs=epochs,
             batch_size=batch_size,
             d_model=d_model,
@@ -248,6 +400,8 @@ class Certainty:
             validate_every=validate_every,
             val_holdout=val_holdout,
             training_params=training_params,
+            save_to=save_to,
+            verbose=verbose,
         )
 
     def rerank(
@@ -327,6 +481,7 @@ class Certainty:
         data_path: Optional[str] = None,
         data: Optional[List[Dict[str, Any]]] = None,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 10,
         batch_size: int = 1,
         d_model: int = 768,
@@ -337,8 +492,12 @@ class Certainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         candidates: Optional[List[str]] = None,
+        save_to: Optional[str] = None,
+        verbose: bool = True,
     ) -> PipelineResponse:
-        """Run train (on your data or built-in) then optionally rerank candidates."""
+        """Run train (on your data or built-in) then optionally rerank candidates.
+        Use ``save_to`` to download the model to a local directory after training.
+        """
         payload: Dict[str, Any] = {
             "epochs": epochs,
             "batch_size": batch_size,
@@ -352,6 +511,8 @@ class Certainty:
         }
         if tokenizer_name is not None:
             payload["tokenizer_name"] = tokenizer_name
+        if gpu is not None:
+            payload["gpu"] = gpu
         if data_path is not None:
             payload["data_path"] = data_path
         if data is not None:
@@ -359,9 +520,23 @@ class Certainty:
         if candidates is not None:
             payload["candidates"] = candidates
 
+        data_src = "provided" if (data is not None or data_path is not None) else "built-in"
+        msg = f"Pipeline: training + rerank (epochs={epochs}, data={data_src})..."
         logger.info("pipeline(epochs=%d, candidates=%s)", epochs, len(candidates) if candidates else 0)
-        data_resp = self._request("POST", "/pipeline", json=payload)
-        return PipelineResponse._from_dict(data_resp)
+        data_resp = self._request_with_progress("POST", "/pipeline", msg, verbose=verbose, json=payload)
+
+        result = PipelineResponse._from_dict(data_resp)
+
+        if verbose and _RICH_AVAILABLE:
+            console = Console()
+            console.print(
+                f"  [green]Done[/green]: {result.train.best_val_acc:.1f}% val acc in {result.train.elapsed_seconds:.0f}s"
+            )
+
+        if save_to:
+            self.download_model(result.train.model_path, local_dir=save_to, verbose=verbose)
+
+        return result
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""

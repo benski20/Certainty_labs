@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from api.auth import require_api_key
 from api.schemas import HealthResponse
-from api.routes import train, infer, pipeline, keys
+from api.routes import train, infer, pipeline, keys, models
 
 
 @asynccontextmanager
@@ -66,6 +66,7 @@ _auth = [Depends(require_api_key)]
 app.include_router(train.router, tags=["train"], dependencies=_auth)
 app.include_router(infer.router, tags=["inference"], dependencies=_auth)
 app.include_router(pipeline.router, tags=["pipeline"], dependencies=_auth)
+app.include_router(models.router, tags=["models"], dependencies=_auth)
 
 
 @app.get("/health", response_model=HealthResponse)

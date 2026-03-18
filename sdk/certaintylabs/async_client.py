@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
 import time
+import zipfile
+from pathlib import Path
+from urllib.parse import quote
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -102,6 +106,42 @@ class AsyncCertainty:
         logger.debug("Parsed JSON %s %s: %s", method, path, str(data)[:300] + "…" if len(str(data)) > 300 else str(data))
         return data
 
+    async def download_model(
+        self,
+        model_path: str,
+        local_dir: str = ".",
+    ) -> str:
+        """Download a trained model and tokenizer to a local directory.
+        Extracts model.pt, tokenizer/, and metrics.json (if present) to local_dir.
+        Returns the path to the extracted model.pt.
+        """
+        local_path = Path(local_dir)
+        local_path.mkdir(parents=True, exist_ok=True)
+
+        headers: Dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        url = f"{self.base_url}/models/download?path={quote(model_path, safe='')}"
+        resp = await self._client.get(url, headers=headers, timeout=self.timeout)
+
+        if resp.status_code >= 400:
+            body = {}
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                try:
+                    body = resp.json()
+                except json.JSONDecodeError:
+                    pass
+            raise APIError(
+                status_code=resp.status_code,
+                detail=body.get("detail", resp.text or "(empty response)"),
+            )
+
+        with zipfile.ZipFile(io.BytesIO(resp.content), "r") as zf:
+            zf.extractall(local_path)
+
+        return str(local_path / "model.pt")
+
     # ── Endpoints ─────────────────────────────────────────────────────
 
     async def health(self) -> HealthResponse:
@@ -115,6 +155,7 @@ class AsyncCertainty:
         data_path: Optional[str] = None,
         data: Optional[List[Dict[str, Any]]] = None,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -125,8 +166,9 @@ class AsyncCertainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
     ) -> TrainResponse:
-        """Train a TransEBM. Use ``data`` or ``data_path``, or neither for built-in dataset. Use ``tokenizer_name`` for Qwen/Llama (e.g. qwen2.5-7b, llama-3.1-8b)."""
+        """Train a TransEBM. Use ``data`` or ``data_path``, or neither for built-in dataset. Use ``tokenizer_name`` for Qwen/Llama (e.g. qwen2.5-7b, llama-3.1-8b). Use ``save_to`` to download the model after training."""
         payload: Dict[str, Any] = {
             "epochs": epochs,
             "batch_size": batch_size,
@@ -140,6 +182,8 @@ class AsyncCertainty:
         }
         if tokenizer_name is not None:
             payload["tokenizer_name"] = tokenizer_name
+        if gpu is not None:
+            payload["gpu"] = gpu
         if training_params:
             for k, v in vars(training_params).items():
                 if v is not None:
@@ -150,18 +194,22 @@ class AsyncCertainty:
             payload["data"] = data
 
         data_resp = await self._request("POST", "/train", json=payload)
-        return TrainResponse(
+        result = TrainResponse(
             model_path=data_resp["model_path"],
             best_val_acc=data_resp["best_val_acc"],
             epochs_trained=data_resp["epochs_trained"],
             elapsed_seconds=data_resp["elapsed_seconds"],
         )
+        if save_to:
+            await self.download_model(result.model_path, local_dir=save_to)
+        return result
 
     async def train_with_data(
         self,
         samples: List[Dict[str, Any]],
         *,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -172,11 +220,13 @@ class AsyncCertainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
     ) -> TrainResponse:
         """Train on in-memory data. Each item in ``samples`` should have keys: question, label, gen_text."""
         return await self.train(
             data=samples,
             tokenizer_name=tokenizer_name,
+            gpu=gpu,
             epochs=epochs,
             batch_size=batch_size,
             d_model=d_model,
@@ -187,6 +237,7 @@ class AsyncCertainty:
             validate_every=validate_every,
             val_holdout=val_holdout,
             training_params=training_params,
+            save_to=save_to,
         )
 
     async def train_from_file(
@@ -194,6 +245,7 @@ class AsyncCertainty:
         path: str,
         *,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 20,
         batch_size: int = 1,
         d_model: int = 768,
@@ -204,6 +256,7 @@ class AsyncCertainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         training_params: Optional[TrainingParams] = None,
+        save_to: Optional[str] = None,
     ) -> TrainResponse:
         """Train on a local EORM JSONL file. Reads the file and sends records to the API."""
         records: List[Dict[str, Any]] = []
@@ -216,6 +269,7 @@ class AsyncCertainty:
         return await self.train_with_data(
             records,
             tokenizer_name=tokenizer_name,
+            gpu=gpu,
             epochs=epochs,
             batch_size=batch_size,
             d_model=d_model,
@@ -226,6 +280,7 @@ class AsyncCertainty:
             validate_every=validate_every,
             val_holdout=val_holdout,
             training_params=training_params,
+            save_to=save_to,
         )
 
     async def rerank(
@@ -297,6 +352,7 @@ class AsyncCertainty:
         data_path: Optional[str] = None,
         data: Optional[List[Dict[str, Any]]] = None,
         tokenizer_name: Optional[str] = None,
+        gpu: Optional[str] = None,
         epochs: int = 10,
         batch_size: int = 1,
         d_model: int = 768,
@@ -307,8 +363,9 @@ class AsyncCertainty:
         validate_every: int = 1,
         val_holdout: float = 0.2,
         candidates: Optional[List[str]] = None,
+        save_to: Optional[str] = None,
     ) -> PipelineResponse:
-        """Run train (on your data or built-in) then optionally rerank candidates."""
+        """Run train (on your data or built-in) then optionally rerank candidates. Use ``save_to`` to download the model after training."""
         payload: Dict[str, Any] = {
             "epochs": epochs,
             "batch_size": batch_size,
@@ -322,6 +379,8 @@ class AsyncCertainty:
         }
         if tokenizer_name is not None:
             payload["tokenizer_name"] = tokenizer_name
+        if gpu is not None:
+            payload["gpu"] = gpu
         if data_path is not None:
             payload["data_path"] = data_path
         if data is not None:
@@ -330,7 +389,10 @@ class AsyncCertainty:
             payload["candidates"] = candidates
 
         data_resp = await self._request("POST", "/pipeline", json=payload)
-        return PipelineResponse._from_dict(data_resp)
+        result = PipelineResponse._from_dict(data_resp)
+        if save_to:
+            await self.download_model(result.train.model_path, local_dir=save_to)
+        return result
 
     async def close(self) -> None:
         """Close the underlying HTTP connection pool."""
