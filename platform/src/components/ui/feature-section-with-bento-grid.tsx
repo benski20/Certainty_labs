@@ -10,12 +10,12 @@ function Feature() {
             <div>
               <Badge>Platform</Badge>
             </div>
-            <div className="flex gap-2 flex-col">
-              <h2 className="text-xl md:text-2xl tracking-tighter max-w-xl font-semibold font-mono">
+            <div className="flex gap-2 flex-col items-center">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl tracking-tight max-w-2xl font-semibold font-mono">
                 Enforce constraints where it matters.
               </h2>
-              <p className="text-xs md:text-sm max-w-xl leading-relaxed tracking-tight text-muted-foreground">
-                Energy-based models add fast, reliable, and interpretable guardrails around any LLM.
+              <p className="text-sm md:text-base max-w-xl leading-relaxed tracking-tight text-muted-foreground mt-1 text-center mx-auto">
+                Energy-based models add fast, reliable guardrails for alignment, constraints, and protocols around any LLM.
               </p>
             </div>
           </div>

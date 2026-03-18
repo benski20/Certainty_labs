@@ -7,6 +7,7 @@ import { Footer } from '@/components/footer'
 import { GridPattern } from '@/components/ui/grid-pattern'
 import { Logos3 } from '@/components/blocks/logos3'
 import { Feature } from '@/components/ui/feature-section-with-bento-grid'
+import { TypingAnimation } from '@/components/ui/typing-animation'
 import { ArrowRight, Shield, Zap, Layers, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -37,12 +38,12 @@ const steps = [
   {
     step: '02',
     title: 'Train an energy model',
-    desc: 'We fit a TransEBM scorer so lower energy means more reliable, constraint-satisfying outputs.',
+    desc: 'Train an EBM scorer so lower energy means more reliable, constraint-satisfying outputs.',
   },
   {
     step: '03',
     title: 'Score or rerank',
-    desc: 'Call the API to score or rerank LLM outputs and return the best candidate in milliseconds.',
+    desc: 'Call the API to score, rerank, or audit LLM outputs and find the most optimal candidate in milliseconds.',
   },
 ]
 
@@ -130,7 +131,7 @@ export default function Home() {
                 variants={fadeIn}
                 className="font-serif text-base md:text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed"
               >
-                Build custom Energy-Based Models that audit, score, and enforce logical alignment. 
+                Train custom Energy-Based Models that audit, score, and enforce logical alignment. You define the constraints. We handle everything else. 
               </motion.p>
               <motion.div
                 variants={fadeInUp}
@@ -219,7 +220,7 @@ export default function Home() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.6, ease: easeOutSmooth }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight font-mono">
                 Simple, powerful API
               </h2>
               <p className="text-neutral-500 mt-3">
@@ -297,7 +298,7 @@ export default function Home() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.6, ease: easeOutSmooth }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight font-mono">
                 Research
               </h2>
               <p className="text-neutral-500 mt-3 max-w-xl">
@@ -348,7 +349,12 @@ export default function Home() {
             transition={{ duration: 0.6, ease: easeOutSmooth }}
           >
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-              Start enforcing constraints
+              <TypingAnimation
+                text="Start enforcing constraints"
+                duration={80}
+                inline
+                className="text-3xl md:text-4xl font-bold tracking-tight font-mono"
+              />
             </h2>
             <p className="text-neutral-500 mt-4 leading-relaxed">
               Get an API key and integrate constraint enforcement into your

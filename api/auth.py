@@ -76,6 +76,7 @@ async def require_api_key(request: Request) -> Optional[str]:
 
     When no keys have been created yet, all requests are allowed (open mode).
     Once at least one key exists, every protected request must carry a valid key.
+    Sets request.state.key_id for usage metering when auth succeeds.
     """
     store = get_key_store()
     keys = store.list_all()
@@ -91,7 +92,9 @@ async def require_api_key(request: Request) -> Optional[str]:
         )
 
     token_hash = _hash_key(token)
-    if not store.exists_hash(token_hash):
+    record = store.get_by_hash(token_hash)
+    if not record:
         raise HTTPException(status_code=401, detail="Invalid API key.")
 
+    request.state.key_id = record["id"]
     return token

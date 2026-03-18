@@ -16,7 +16,8 @@ from fastapi.responses import JSONResponse
 
 from api.auth import require_api_key
 from api.schemas import HealthResponse
-from api.routes import train, infer, pipeline, keys, models
+from api.routes import train, infer, pipeline, keys, models, usage
+from api.usage_meter import path_to_endpoint, record_usage
 
 
 @asynccontextmanager
@@ -44,6 +45,20 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def usage_metering_middleware(request, call_next):
+    """Record usage for successful requests to metered endpoints."""
+    response = await call_next(request)
+    if 200 <= response.status_code < 300 and hasattr(request.state, "key_id"):
+        endpoint = path_to_endpoint(request.url.path)
+        if endpoint:
+            try:
+                record_usage(request.state.key_id, endpoint)
+            except Exception:
+                pass  # Don't fail the request if metering fails
+    return response
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -67,6 +82,7 @@ app.include_router(train.router, tags=["train"], dependencies=_auth)
 app.include_router(infer.router, tags=["inference"], dependencies=_auth)
 app.include_router(pipeline.router, tags=["pipeline"], dependencies=_auth)
 app.include_router(models.router, tags=["models"], dependencies=_auth)
+app.include_router(usage.router, tags=["usage"], dependencies=_auth)
 
 
 @app.get("/health", response_model=HealthResponse)

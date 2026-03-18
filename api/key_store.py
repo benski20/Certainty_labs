@@ -52,6 +52,13 @@ class FileKeyStore:
         keys = _file_load()
         return any(k["key_hash"] == key_hash for k in keys)
 
+    def get_by_hash(self, key_hash: str) -> dict | None:
+        keys = _file_load()
+        for k in keys:
+            if k["key_hash"] == key_hash:
+                return k
+        return None
+
 
 class SupabaseKeyStore:
     """Store API keys in Supabase Postgres (production)."""
@@ -95,6 +102,12 @@ class SupabaseKeyStore:
     def exists_hash(self, key_hash: str) -> bool:
         resp = self._client.table(_TABLE_NAME).select("id").eq("key_hash", key_hash).limit(1).execute()
         return len(resp.data) > 0 if resp.data else False
+
+    def get_by_hash(self, key_hash: str) -> dict | None:
+        resp = self._client.table(_TABLE_NAME).select("id,name,key_hash,prefix,created_at,user_id").eq("key_hash", key_hash).limit(1).execute()
+        if resp.data and len(resp.data) > 0:
+            return resp.data[0]
+        return None
 
 
 def get_key_store():
