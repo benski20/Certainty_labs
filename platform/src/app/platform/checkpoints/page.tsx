@@ -38,7 +38,7 @@ export default function CheckpointsPage() {
         <div className="py-20 text-center">
           <p className="text-sm text-neutral-400">No checkpoints yet.</p>
           <p className="text-xs text-neutral-400 mt-1">
-            Checkpoints are saved automatically during training runs.
+            Checkpoints are saved automatically during training runs (coming soon)
           </p>
         </div>
       ) : (

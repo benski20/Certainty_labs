@@ -44,7 +44,7 @@ export default function TrainingRunsPage() {
         <div className="py-20 text-center">
           <p className="text-sm text-neutral-400">No training runs yet.</p>
           <p className="text-xs text-neutral-400 mt-1">
-            Start a training run through the API.
+            Start a training run through the API (coming soon)
           </p>
         </div>
       ) : (
