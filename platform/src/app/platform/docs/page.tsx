@@ -43,71 +43,99 @@ const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/train',
-    desc: 'Train a TransEBM. Data: built-in GSM8K (omit data), or your EORM JSONL via data or data_path. Use tokenizer_name for Qwen/Llama compatibility so the EBM matches your LLM tokenization.',
+    desc: 'Train a TransEBM. Data: built-in GSM8K (omit data), or your EORM JSONL via data or data_path. Match tokenizer_name to your LLM (Qwen/Llama).',
     body: [
-      { name: 'data', type: 'object[]', required: false, desc: 'In-memory EORM records: [{question, label, gen_text}, ...].' },
-      { name: 'data_path', type: 'string', required: false, desc: 'Server path to EORM JSONL (or use SDK train_from_file for local).' },
-      { name: 'tokenizer_name', type: 'string', required: false, desc: 'HuggingFace tokenizer: gpt2 (default), or alias/full ID for Qwen/Llama (e.g. qwen2.5-7b, llama-3.1-8b, Qwen/Qwen2.5-7B-Instruct).' },
+      { name: 'data', type: 'object[]', required: false, desc: 'In-memory EORM: [{question, label, gen_text}, ...].' },
+      { name: 'data_path', type: 'string', required: false, desc: 'Server path to EORM JSONL (SDK train_from_file for local).' },
+      { name: 'tokenizer_name', type: 'string', required: false, default: 'gpt2', desc: 'gpt2, qwen2.5-7b, llama-3.1-8b, or full HF ID.' },
+      { name: 'gpu', type: 'string', required: false, desc: 'Runtime GPU: T4, L4, A10, A100, L40S, H100.' },
       { name: 'epochs', type: 'integer', required: false, default: '20', desc: 'Training epochs.' },
+      { name: 'batch_size', type: 'integer', required: false, default: '1', desc: 'Batch size.' },
       { name: 'd_model', type: 'integer', required: false, default: '768', desc: 'Transformer hidden size.' },
+      { name: 'n_heads', type: 'integer', required: false, default: '4', desc: 'Attention heads.' },
+      { name: 'n_layers', type: 'integer', required: false, default: '2', desc: 'Transformer layers.' },
       { name: 'lr', type: 'float', required: false, default: '5e-5', desc: 'Learning rate.' },
+      { name: 'max_length', type: 'integer', required: false, default: '2048', desc: 'Max token length.' },
+      { name: 'validate_every', type: 'integer', required: false, default: '1', desc: 'Validate every N epochs.' },
+      { name: 'val_holdout', type: 'float', required: false, default: '0.2', desc: 'Validation split ratio.' },
     ],
     response: `{ "model_path": "./certainty_workspace/model/ebm_certainty_model.pt", "best_val_acc": 72.5, "epochs_trained": 20, "elapsed_seconds": 145.3 }`,
     curl: `curl -X POST ${BASE}/train -H "Content-Type: application/json" -H "Authorization: Bearer ck_..." -d '{"epochs": 10}'`,
-    python: `# Built-in (default gpt2 tokenizer)\nheaders = {"Authorization": "Bearer ck_..."}\ndefault = requests.post("${BASE}/train", json={"epochs": 10}, headers=headers).json()\n# Qwen/Llama: match tokenizer to your LLM\nr = requests.post("${BASE}/train", json={"data": records, "tokenizer_name": "qwen2.5-7b", "epochs": 15}, headers=headers)`,
-    sdk: `result = client.train(epochs=10)\nresult = client.train(tokenizer_name="qwen2.5-7b", epochs=10)\nresult = client.train_with_data(samples, tokenizer_name="llama-3.1-8b")\nresult = client.train_from_file("data.jsonl")`,
+    python: `headers = {"Authorization": "Bearer ck_..."}\nr = requests.post("${BASE}/train", json={"epochs": 10, "gpu": "A10"}, headers=headers).json()`,
+    sdk: `r = client.train(epochs=10, gpu="A10")\nr = client.train_with_data(samples, tokenizer_name="qwen2.5-7b", save_to="./my_model")`,
   },
   {
     method: 'POST',
     path: '/rerank',
-    desc: 'Score candidates with the trained TransEBM; returns the lowest-energy (best) one. Pass candidates, or omit and generate via openai_api_key (OpenAI-compatible) or hf_model + hf_token (Hugging Face Inference for Qwen/Llama).',
+    desc: 'Generate candidates via LLM (OpenAI or HF) then score and return the best. Or pass pre-generated candidates. Lower energy = better.',
     body: [
-      { name: 'candidates', type: 'string[]', required: false, default: '[]', desc: 'Pre-generated candidate texts. Omit to generate via openai_api_key or hf_model + hf_token.' },
-      { name: 'prompt', type: 'string', required: false, default: '""', desc: 'Question/prompt (required when generating candidates).' },
-      { name: 'model_path', type: 'string', required: false, default: '"./certainty_workspace/model/..."', desc: 'Path to trained .pt model.' },
-      { name: 'tokenizer_path', type: 'string', required: false, desc: 'Path to tokenizer saved with the model (from training).' },
-      { name: 'openai_api_key', type: 'string', required: false, desc: 'OpenAI-compatible: generate n_candidates then rerank.' },
-      { name: 'openai_model', type: 'string', required: false, desc: 'Model name (e.g. gpt-4o-mini).' },
-      { name: 'openai_base_url', type: 'string', required: false, desc: 'OpenAI-compatible API base URL.' },
-      { name: 'hf_model', type: 'string', required: false, desc: 'Hugging Face model ID or alias (e.g. qwen2.5-7b, Qwen/Qwen2.5-7B-Instruct). Use with hf_token.' },
-      { name: 'hf_token', type: 'string', required: false, desc: 'Hugging Face API token for Inference API (required if hf_model set).' },
-      { name: 'n_candidates', type: 'integer', required: false, default: '5', desc: 'Number of candidates when generating (openai or HF).' },
+      { name: 'candidates', type: 'string[]', required: false, default: '[]', desc: 'Pre-generated texts. Omit to generate via openai_api_key or hf_model+hf_token.' },
+      { name: 'prompt', type: 'string', required: false, default: '""', desc: 'Question (required when generating).' },
+      { name: 'model_path', type: 'string', required: false, default: '"./certainty_workspace/model/..."', desc: 'Trained .pt model path.' },
+      { name: 'tokenizer_path', type: 'string', required: false, desc: 'Tokenizer dir (from training).' },
+      { name: 'openai_api_key', type: 'string', required: false, desc: 'OpenAI-compatible: generate n_candidates, then score.' },
+      { name: 'openai_model', type: 'string', required: false, default: 'gpt-4o', desc: 'Model name.' },
+      { name: 'openai_base_url', type: 'string', required: false, desc: 'OpenAI-compatible base URL.' },
+      { name: 'hf_model', type: 'string', required: false, desc: 'HF model (e.g. qwen2.5-7b). Use with hf_token.' },
+      { name: 'hf_token', type: 'string', required: false, desc: 'HF API token (required if hf_model).' },
+      { name: 'n_candidates', type: 'integer', required: false, default: '5', desc: 'Candidates to generate when using LLM.' },
     ],
-    response: `{ "best_candidate": "Best answer text.", "best_index": 0, "all_energies": [-1.42, 0.87, 2.31] }`,
-    curl: `# Your candidates\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"candidates": ["A", "B", "C"], "prompt": "What is 2+2?"}'\n# OpenAI-compatible LLM\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"prompt": "What is 2+2?", "openai_api_key": "sk-...", "n_candidates": 5}'\n# Hugging Face (Qwen/Llama)\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"prompt": "What is 2+2?", "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}'`,
-    python: `headers = {"Authorization": "Bearer ck_..."}\n# Pre-generated\nr = requests.post("${BASE}/rerank", json={"candidates": ["A","B","C"], "prompt": q}, headers=headers).json()\n# OpenAI-compatible\nr = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers=headers).json()\n# Hugging Face Qwen/Llama\nr = requests.post("${BASE}/rerank", json={"prompt": q, "hf_model": "qwen2.5-7b", "hf_token": "hf_...", "n_candidates": 5}, headers=headers).json()\nprint(r["best_candidate"])`,
-    sdk: `best = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)\nbest = client.rerank(prompt=q, hf_model="qwen2.5-7b", hf_token="hf_...", n_candidates=5)\nprint(best.best_candidate)`,
+    response: `{ "best_candidate": "Best answer.", "best_index": 0, "all_energies": [-1.42, 0.87, 2.31] }`,
+    curl: `# Pre-generated\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"candidates": ["A","B","C"], "prompt": "What is 2+2?"}'\n# LLM generates then scores\ncurl -X POST ${BASE}/rerank -H "Authorization: Bearer ck_..." -d '{"prompt": "What is 2+2?", "openai_api_key": "sk-...", "n_candidates": 5}'`,
+    python: `# Your candidates\nr = requests.post("${BASE}/rerank", json={"candidates": ["A","B","C"]}, headers=headers).json()\n# LLM generates + scores\nr = requests.post("${BASE}/rerank", json={"prompt": q, "openai_api_key": "sk-...", "n_candidates": 5}, headers=headers).json()`,
+    sdk: `best = client.rerank(candidates=["A","B","C"], prompt=q)\nbest = client.rerank(prompt=q, openai_api_key="sk-...", n_candidates=5)`,
   },
   {
     method: 'POST',
     path: '/score',
-    desc: 'Get EBM energy scores for one or more outputs (no reranking). Use for verifiable/interpretable AI: log confidence, audit reliability, track scores over time. Lower energy = higher confidence.',
+    desc: 'Get EBM energy for outputs (no selection). Lower = higher confidence. Use for logging, audit, A/B.',
     body: [
-      { name: 'texts', type: 'string[]', required: true, desc: 'One or more outputs to score (order preserved in response).' },
-      { name: 'prompt', type: 'string', required: false, default: '""', desc: 'Optional context/prompt (prepended when scoring).' },
-      { name: 'model_path', type: 'string', required: false, default: '"./certainty_workspace/model/..."', desc: 'Path to trained .pt model.' },
-      { name: 'tokenizer_path', type: 'string', required: false, desc: 'Path to tokenizer saved with the model.' },
+      { name: 'texts', type: 'string[]', required: true, desc: 'Outputs to score (order preserved).' },
+      { name: 'prompt', type: 'string', required: false, default: '""', desc: 'Optional context.' },
+      { name: 'model_path', type: 'string', required: false, default: '"./certainty_workspace/model/..."', desc: 'Trained .pt model.' },
+      { name: 'tokenizer_path', type: 'string', required: false, desc: 'Tokenizer dir.' },
     ],
     response: `{ "energies": [-1.42, 0.87, 2.31] }`,
-    curl: `curl -X POST ${BASE}/score -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"texts": ["Output A", "Output B"], "prompt": "What is 2+2?"}'`,
-    python: `r = requests.post("${BASE}/score", json={"texts": [out1, out2], "prompt": q}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["energies"])  # log, audit, track confidence`,
-    sdk: `scores = client.score(texts=[out1, out2], prompt=q)\nprint(scores.energies)  # lower = higher confidence`,
+    curl: `curl -X POST ${BASE}/score -H "Authorization: Bearer ck_..." -d '{"texts": ["A", "B"], "prompt": "What is 2+2?"}'`,
+    python: `r = requests.post("${BASE}/score", json={"texts": [out1, out2], "prompt": q}, headers=headers).json()`,
+    sdk: `scores = client.score(texts=[out1, out2], prompt=q)`,
   },
   {
     method: 'POST',
     path: '/pipeline',
-    desc: 'One call: train (on your data or built-in) then optionally rerank. Supports tokenizer_name for Qwen/Llama. Pass candidates to rerank after training.',
+    desc: 'Train then optionally rerank. Same params as train + candidates for rerank.',
     body: [
-      { name: 'data', type: 'object[]', required: false, desc: 'In-memory EORM records.' },
-      { name: 'data_path', type: 'string', required: false, desc: 'Server path to EORM JSONL.' },
-      { name: 'tokenizer_name', type: 'string', required: false, desc: 'Tokenizer for training (gpt2, qwen2.5-7b, llama-3.1-8b, or full HF ID).' },
+      { name: 'data', type: 'object[]', required: false, desc: 'EORM records.' },
+      { name: 'data_path', type: 'string', required: false, desc: 'Path to EORM JSONL.' },
+      { name: 'tokenizer_name', type: 'string', required: false, desc: 'gpt2, qwen2.5-7b, llama-3.1-8b.' },
+      { name: 'gpu', type: 'string', required: false, desc: 'Runtime GPU (T4, A10, A100, etc.).' },
       { name: 'epochs', type: 'integer', required: false, default: '10', desc: 'Training epochs.' },
-      { name: 'candidates', type: 'string[]', required: false, desc: 'If set, rerank these after training.' },
+      { name: 'batch_size', type: 'integer', required: false, default: '1', desc: 'Batch size.' },
+      { name: 'd_model', type: 'integer', required: false, default: '768', desc: 'Hidden size.' },
+      { name: 'n_heads', type: 'integer', required: false, default: '4', desc: 'Attention heads.' },
+      { name: 'n_layers', type: 'integer', required: false, default: '2', desc: 'Layers.' },
+      { name: 'lr', type: 'float', required: false, default: '5e-5', desc: 'Learning rate.' },
+      { name: 'max_length', type: 'integer', required: false, default: '2048', desc: 'Max length.' },
+      { name: 'validate_every', type: 'integer', required: false, default: '1', desc: 'Validate every N epochs.' },
+      { name: 'val_holdout', type: 'float', required: false, default: '0.2', desc: 'Val split.' },
+      { name: 'candidates', type: 'string[]', required: false, desc: 'If set, rerank after training.' },
     ],
     response: `{ "train": { "model_path": "...", "best_val_acc": 68, "elapsed_seconds": 82 }, "rerank": { "best_candidate": "..." } or null }`,
-    curl: `curl -X POST ${BASE}/pipeline -H "Authorization: Bearer ck_..." -H "Content-Type: application/json" -d '{"epochs": 10}'`,
-    python: `r = requests.post("${BASE}/pipeline", json={"epochs": 10, "tokenizer_name": "qwen2.5-7b"}, headers={"Authorization": "Bearer ck_..."}).json()\nprint(r["train"]["best_val_acc"])`,
-    sdk: `result = client.pipeline(epochs=10, tokenizer_name="llama-3.1-8b", candidates=["A", "B"])\nprint(result.train.best_val_acc)`,
+    curl: `curl -X POST ${BASE}/pipeline -H "Authorization: Bearer ck_..." -d '{"epochs": 10, "candidates": ["A","B"]}'`,
+    python: `r = requests.post("${BASE}/pipeline", json={"epochs": 10, "candidates": ["A","B"]}, headers=headers).json()`,
+    sdk: `r = client.pipeline(epochs=10, gpu="A10", candidates=["A","B"], save_to="./model")`,
+  },
+  {
+    method: 'GET',
+    path: '/models/download',
+    desc: 'Download trained model + tokenizer as zip. Query param: path (server model path from train response).',
+    body: [
+      { name: 'path', type: 'string', required: true, desc: 'Query param: server path to model.pt (e.g. ./certainty_workspace/model/ebm_certainty_model.pt).' },
+    ],
+    response: 'Zip file (model.pt, tokenizer/, metrics.json)',
+    curl: `curl -o model.zip "${BASE}/models/download?path=./certainty_workspace/model/ebm_certainty_model.pt" -H "Authorization: Bearer ck_..."`,
+    python: `r = requests.get(f"${BASE}/models/download?path={model_path}", headers=headers)\nwith open("model.zip", "wb") as f: f.write(r.content)`,
+    sdk: `client.download_model(result.model_path, local_dir="./my_model")`,
   },
 ]
 
@@ -152,10 +180,11 @@ function MethodBadge({ method }: { method: string }) {
   )
 }
 
-function ParamTable({ params }: { params: Param[] }) {
+function ParamTable({ params, method }: { params: Param[]; method?: string }) {
+  const label = method === 'GET' ? 'Query Parameters' : 'Request Body'
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">Request Body</p>
+      <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">{label}</p>
       <div className="border border-neutral-200 rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -203,7 +232,7 @@ function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
 
       {ep.body && ep.body.length > 0 && (
         <div className="px-5 py-3 border-b border-neutral-100">
-          <ParamTable params={ep.body} />
+          <ParamTable params={ep.body} method={ep.method} />
         </div>
       )}
 
@@ -235,6 +264,7 @@ function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
 
 const onThisPageItems = [
   { id: 'overview', label: 'Overview' },
+  { id: 'llm-generate-score', label: 'LLM → Generate → Score' },
   { id: 'authentication', label: 'Auth' },
   { id: 'qwen-llama', label: 'Qwen & Llama' },
   { id: 'verifiable-ai', label: 'Score (confidence)' },
@@ -242,6 +272,7 @@ const onThisPageItems = [
   { id: 'ep-rerank', label: '/rerank' },
   { id: 'ep-score', label: '/score' },
   { id: 'ep-pipeline', label: '/pipeline' },
+  { id: 'ep-models-download', label: '/models/download' },
   { id: 'ep-api-keys', label: 'API Keys' },
   { id: 'data-format', label: 'EORM Format' },
   { id: 'errors', label: 'Errors' },
@@ -293,10 +324,13 @@ pip install certaintylabs
 # 3. Python
 from certaintylabs import Certainty
 client = Certainty()
-print(client.health().version)           # 0.1.0
+print(client.health().version)
 r = client.train(epochs=5)               # built-in GSM8K
 best = client.rerank(["A","B","C"], prompt="What is 2+2?")
-print(best.best_candidate)`}
+print(best.best_candidate)
+
+# Optional: LLM generates candidates, then EBM scores
+best = client.rerank(prompt="What is 2+2?", openai_api_key="sk-...", n_candidates=5)`}
             lang="python"
           />
         </div>
@@ -309,7 +343,7 @@ print(best.best_candidate)`}
           </p>
           <div className="flex items-center gap-4 mt-3 flex-wrap">
             <span className="text-xs text-neutral-500">Version</span>
-            <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">0.1.0</code>
+            <code className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2 py-1 rounded border border-neutral-200">0.2.0</code>
           </div>
         </div>
 
@@ -342,7 +376,7 @@ print(best.best_candidate)`}
               {endpoints.map((ep) => (
                 <a
                   key={ep.path}
-                  href={`#ep-${ep.path.slice(1)}`}
+                  href={`#ep-${ep.path.slice(1).replace(/\//g, '-')}`}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                 >
                   <MethodBadge method={ep.method} />
@@ -357,7 +391,21 @@ print(best.best_candidate)`}
           </div>
         </section>
 
-        {/* Auth & Qwen/Llama — concise */}
+        {/* LLM Generate + Score */}
+        <section id="llm-generate-score" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">LLM → Generate → Score</h2>
+          <p className="text-sm text-neutral-600 mb-3">
+            <strong>Yes.</strong> <code className="text-[12px] bg-neutral-100 px-1 rounded">POST /rerank</code> can call your LLM to generate candidates, then score them with the trained EBM and return the best. Omit <code className="text-[12px] bg-neutral-100 px-1 rounded">candidates</code> and pass either:
+          </p>
+          <ul className="text-sm text-neutral-600 list-disc list-inside space-y-1 mb-3">
+            <li><code className="text-[12px] bg-neutral-100 px-1 rounded">openai_api_key</code> (+ optional <code className="text-[12px] bg-neutral-100 px-1 rounded">openai_model</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">openai_base_url</code>)</li>
+            <li><code className="text-[12px] bg-neutral-100 px-1 rounded">hf_model</code> + <code className="text-[12px] bg-neutral-100 px-1 rounded">hf_token</code> (Hugging Face Inference)</li>
+          </ul>
+          <p className="text-sm text-neutral-600">The API generates <code className="text-[12px] bg-neutral-100 px-1 rounded">n_candidates</code> (default 5), scores each with the EBM, and returns the lowest-energy (best) one plus all energies.</p>
+          <CodeBlock code={`# SDK: LLM generates 5 candidates, EBM scores them, best returned\nbest = client.rerank(prompt="What is 2+2?", openai_api_key="sk-...", n_candidates=5)`} lang="python" />
+        </section>
+
+        {/* Auth */}
         <section id="authentication" className="mb-10 scroll-mt-24">
           <h2 className="text-lg font-semibold text-neutral-900 mb-2">Authentication</h2>
           <p className="text-sm text-neutral-600 mb-2">Create keys in <strong>Platform → API Keys</strong>. Use <code className="text-[12px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code>. SDK reads <code className="text-[12px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> from env.</p>
@@ -380,7 +428,7 @@ print(best.best_candidate)`}
           <h2 className="text-xl font-semibold text-neutral-900 mb-6">Endpoints</h2>
           <div className="space-y-6">
             {endpoints.map((ep) => (
-              <EndpointCard key={ep.path} ep={ep} id={`ep-${ep.path.slice(1)}`} />
+              <EndpointCard key={ep.path} ep={ep} id={`ep-${ep.path.slice(1).replace(/\//g, '-')}`} />
             ))}
           </div>
         </section>
@@ -438,7 +486,7 @@ print(best.best_candidate)`}
 
         {/* Footer */}
         <div className="border-t border-neutral-200 pt-6 pb-12 flex items-center justify-between text-xs text-neutral-500">
-          <span>Certainty Labs API v0.1.0</span>
+          <span>Certainty Labs API v0.2.0</span>
           <a
             href={`${BASE}/docs`}
             target="_blank"
