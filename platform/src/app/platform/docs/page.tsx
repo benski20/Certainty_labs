@@ -264,8 +264,11 @@ function EndpointCard({ ep, id }: { ep: Endpoint; id: string }) {
 
 const onThisPageItems = [
   { id: 'overview', label: 'Overview' },
+  { id: 'sdk-examples', label: 'SDK Examples' },
   { id: 'llm-generate-score', label: 'LLM → Generate → Score' },
   { id: 'authentication', label: 'Auth' },
+  { id: 'finding-data', label: 'Finding & Creating Data' },
+  { id: 'data-format', label: 'Data Format' },
   { id: 'qwen-llama', label: 'Qwen & Llama' },
   { id: 'verifiable-ai', label: 'Score (confidence)' },
   { id: 'ep-train', label: '/train' },
@@ -274,7 +277,6 @@ const onThisPageItems = [
   { id: 'ep-pipeline', label: '/pipeline' },
   { id: 'ep-models-download', label: '/models/download' },
   { id: 'ep-api-keys', label: 'API Keys' },
-  { id: 'data-format', label: 'EORM Format' },
   { id: 'errors', label: 'Errors' },
 ]
 
@@ -391,6 +393,147 @@ best = client.rerank(prompt="What is 2+2?", openai_api_key="sk-...", n_candidate
           </div>
         </section>
 
+        {/* SDK Examples */}
+        <section id="sdk-examples" className="mb-12 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">SDK Examples</h2>
+          <p className="text-sm text-neutral-600 mb-4">
+            Full workflows using the Python SDK. Set <code className="text-[12px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> before running.
+          </p>
+
+          <div className="space-y-6">
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Train → Save → Rerank</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# Train on built-in GSM8K, save model locally
+result = client.train(
+    epochs=5,
+    batch_size=8,
+    d_model=256,
+    n_heads=4,
+    n_layers=2,
+    save_to="./my_model.zip",  # downloads model after training
+)
+print(f"Val acc: {result.best_val_acc:.1f}%")
+print(f"Model path: {result.model_path}")
+
+# Rerank candidates using the trained model
+best = client.rerank(
+    candidates=["Answer A", "Answer B", "Answer C"],
+    prompt="What is 2+2?",
+    model_path=result.model_path,
+)
+print(f"Best: {best.best_candidate}")
+print(f"Energies: {best.all_energies}")  # lower = better`}
+                lang="python"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Train from your data (in-memory)</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# EORM records: question, label (1=correct, 0=wrong), gen_text
+data = [
+    {"question": "What is 2+2?", "label": 1, "gen_text": "4"},
+    {"question": "What is 2+2?", "label": 0, "gen_text": "5"},
+    {"question": "What is 3*3?", "label": 1, "gen_text": "9"},
+]
+
+result = client.train_with_data(
+    data=data,
+    epochs=5,
+    batch_size=4,
+)
+print(f"Val acc: {result.best_val_acc:.1f}%")`}
+                lang="python"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Train from local JSONL file</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# train_from_file uploads your JSONL and trains on it
+result = client.train_from_file(
+    path="./train.jsonl",
+    tokenizer_name="gpt2",
+    epochs=5,
+    batch_size=8,
+)
+print(f"Val acc: {result.best_val_acc:.1f}%")
+print(f"Model: {result.model_path}")`}
+                lang="python"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">LLM generate + rerank (OpenAI-compatible)</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# Generate candidates via OpenAI, then rerank with EBM
+best = client.rerank(
+    prompt="Janet has 16 eggs. She eats 3, bakes with 4, sells the rest at $2 each. How much does she make?",
+    openai_api_key="sk-...",
+    n_candidates=5,
+    model_path="your_model_path",  # or use a previously trained model
+)
+print(f"Best answer: {best.best_candidate}")
+print(f"All energies (lower=better): {best.all_energies}")`}
+                lang="python"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Pipeline: train + rerank in one call</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# Train on built-in GSM8K, then immediately rerank
+pipeline_result = client.pipeline(
+    epochs=3,
+    batch_size=8,
+    candidates=["Option A", "Option B", "Option C"],
+)
+print(f"Train acc: {pipeline_result.train.best_val_acc:.1f}%")
+print(f"Rerank best: {pipeline_result.rerank.best_candidate}")`}
+                lang="python"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Download model for reuse</p>
+              <CodeBlock
+                code={`from certaintylabs import Certainty
+
+client = Certainty()
+
+# Train and get model path from API
+result = client.train(epochs=5)
+model_path = result.model_path  # e.g. "models/abc123"
+
+# Download to local directory (model.pt, tokenizer/, metrics.json)
+client.download_model(model_path, local_dir="./my_model")`}
+                lang="python"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* LLM Generate + Score */}
         <section id="llm-generate-score" className="mb-10 scroll-mt-24">
           <h2 className="text-lg font-semibold text-neutral-900 mb-2">LLM → Generate → Score</h2>
@@ -409,6 +552,47 @@ best = client.rerank(prompt="What is 2+2?", openai_api_key="sk-...", n_candidate
         <section id="authentication" className="mb-10 scroll-mt-24">
           <h2 className="text-lg font-semibold text-neutral-900 mb-2">Authentication</h2>
           <p className="text-sm text-neutral-600 mb-2">Create keys in <strong>Platform → API Keys</strong>. Use <code className="text-[12px] bg-neutral-100 px-1 rounded">Authorization: Bearer ck_...</code>. SDK reads <code className="text-[12px] bg-neutral-100 px-1 rounded">CERTAINTY_API_KEY</code> from env.</p>
+        </section>
+
+        {/* Finding & Creating Data */}
+        <section id="finding-data" className="mb-10 scroll-mt-24">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Finding & Creating Data</h2>
+          <p className="text-sm text-neutral-600 mb-4">
+            If you don&apos;t have training data yet, here are practical options:
+          </p>
+          <ul className="text-sm text-neutral-600 space-y-2 list-disc list-inside mb-4">
+            <li><strong>Built-in GSM8K</strong> — Call <code className="text-[12px] bg-neutral-100 px-1 rounded">client.train()</code> with no data; the API uses a built-in math QA demo. Good for quick experiments.</li>
+            <li><strong>Hugging Face</strong> — Use datasets like <code className="text-[12px] bg-neutral-100 px-1 rounded">openai/gsm8k</code> (question + answer). You need to generate wrong answers (e.g. via LLM with wrong prompts) and label them 0; correct answers get label 1.</li>
+            <li><strong>Your own LLM outputs</strong> — Run your LLM on prompts, collect outputs, label correct vs incorrect (e.g. by checking against ground truth or human review).</li>
+          </ul>
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Example: Convert GSM8K from Hugging Face</p>
+          <CodeBlock
+            code={`# pip install datasets
+from datasets import load_dataset
+
+ds = load_dataset("openai/gsm8k", "main", split="train")
+
+# Build EORM records: question, label, gen_text
+# For each question, you need at least one correct (1) and one wrong (0) answer.
+records = []
+for ex in ds:
+    q = ex["question"]
+    correct = ex["answer"].split("####")[-1].strip()  # final answer
+    records.append({"question": q, "label": 1, "gen_text": correct})
+    # Wrong answer: use LLM with wrong prompt, or simple heuristic (e.g. +1 for math)
+    wrong = "incorrect"  # or: str(int(correct)+1) for numeric answers
+    records.append({"question": q, "label": 0, "gen_text": wrong})
+
+# Save as JSONL
+import json
+with open("train.jsonl", "w") as f:
+    for r in records:
+        f.write(json.dumps(r) + "\\n")`}
+            lang="python"
+          />
+          <p className="text-xs text-neutral-500 mt-2">
+            Other HF datasets: <code className="text-[12px] bg-neutral-100 px-1 rounded">lighteval/MATH</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">openai/gsm8k</code> (grade_school_math). For preference pairs, use <code className="text-[12px] bg-neutral-100 px-1 rounded">preferred</code>/<code className="text-[12px] bg-neutral-100 px-1 rounded">unpreferred</code> — see Data Format below.
+          </p>
         </section>
 
         <section id="qwen-llama" className="mb-10 scroll-mt-24">
@@ -464,9 +648,52 @@ best = client.rerank(prompt="What is 2+2?", openai_api_key="sk-...", n_candidate
 
         {/* Data Format */}
         <section id="data-format" className="mb-10 scroll-mt-24">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-2">EORM Format</h2>
-          <p className="text-sm text-neutral-600 mb-2">JSONL: <code className="text-[12px] bg-neutral-100 px-1 rounded">question</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">label</code> (0/1), <code className="text-[12px] bg-neutral-100 px-1 rounded">gen_text</code>. Or <code className="text-[12px] bg-neutral-100 px-1 rounded">preferred</code>/<code className="text-[12px] bg-neutral-100 px-1 rounded">unpreferred</code>.</p>
-          <CodeBlock code={`{"question": "What is 2+2?", "label": 1, "gen_text": "The answer is 4."}`} lang="json" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-2">Data Format</h2>
+          <p className="text-sm text-neutral-600 mb-4">
+            Training data is <strong>JSONL</strong> (one JSON object per line). Three styles are supported:
+          </p>
+
+          <div className="space-y-6">
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Style 1: question + label + gen_text</p>
+              <p className="text-sm text-neutral-600 mb-2">
+                <code className="text-[12px] bg-neutral-100 px-1 rounded">label</code> 1 = correct/constraint-satisfying, 0 = incorrect. <code className="text-[12px] bg-neutral-100 px-1 rounded">gen_text</code> is the LLM output to score.
+              </p>
+              <CodeBlock
+                code={`{"question": "What is 2+2?", "label": 1, "gen_text": "The answer is 4."}
+{"question": "What is 2+2?", "label": 0, "gen_text": "The answer is 5."}
+{"question": "What is 3*3?", "label": 1, "gen_text": "9"}`}
+                lang="json"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Style 2: generated_full_text (alias)</p>
+              <p className="text-sm text-neutral-600 mb-2">
+                <code className="text-[12px] bg-neutral-100 px-1 rounded">generated_full_text</code> is an alias for <code className="text-[12px] bg-neutral-100 px-1 rounded">gen_text</code>. Use whichever matches your pipeline.
+              </p>
+              <CodeBlock
+                code={`{"question": "Solve: x + 5 = 10", "label": 1, "generated_full_text": "x = 5"}`}
+                lang="json"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Style 3: preferred / unpreferred</p>
+              <p className="text-sm text-neutral-600 mb-2">
+                One record per pair. The API converts each into two EORM records (preferred→label 1, unpreferred→label 0). Good for preference data from RLHF or human comparisons.
+              </p>
+              <CodeBlock
+                code={`{"question": "What is 2+2?", "preferred": "4", "unpreferred": "5"}
+{"question": "What is 2+2?", "preferred": "The answer is 4.", "unpreferred": "I don't know."}`}
+                lang="json"
+              />
+            </div>
+
+            <p className="text-sm text-neutral-600 mt-4">
+              You can mix styles in the same file. Extra fields (e.g. <code className="text-[12px] bg-neutral-100 px-1 rounded">id</code>, <code className="text-[12px] bg-neutral-100 px-1 rounded">source</code>) are preserved in metadata.
+            </p>
+          </div>
         </section>
 
         {/* Errors */}
