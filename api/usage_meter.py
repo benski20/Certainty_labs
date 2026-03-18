@@ -72,6 +72,26 @@ class FileUsageStore:
                 totals[endpoint] = totals.get(endpoint, 0) + count
         return totals
 
+    def get_user_summary(self, user_id: str, period: str) -> dict:
+        """Compute total + breakdown from local file (no view)."""
+        from api.key_store import get_key_store
+        keys = get_key_store().list_all(user_id=user_id)
+        breakdown = self.get_by_user(user_id, period, keys)
+        total = sum(breakdown.values())
+        return {
+            "user_id": user_id,
+            "period": period,
+            "total": total,
+            "train": breakdown.get("train", 0),
+            "rerank": breakdown.get("rerank", 0),
+            "score": breakdown.get("score", 0),
+            "pipeline": breakdown.get("pipeline", 0),
+            "models_download": breakdown.get("models/download", 0),
+        }
+
+    def get_user_summary_range(self, user_id: str, periods: list[str]) -> list[dict]:
+        return [self.get_user_summary(user_id, p) for p in periods]
+
 
 class SupabaseUsageStore:
     """Store usage in Supabase Postgres (production)."""
@@ -119,6 +139,50 @@ class SupabaseUsageStore:
         for r in resp.data or []:
             totals[r["endpoint"]] = totals.get(r["endpoint"], 0) + r["count"]
         return totals
+
+    def get_user_summary(self, user_id: str, period: str) -> dict:
+        """Query user_usage_summary view for total + breakdown. Returns empty dict if no row."""
+        try:
+            resp = (
+                self._client.table("user_usage_summary")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("period", period)
+                .limit(1)
+                .execute()
+            )
+            if resp.data and len(resp.data) > 0:
+                return dict(resp.data[0])
+        except Exception:
+            pass
+        return {
+            "user_id": user_id,
+            "period": period,
+            "total": 0,
+            "train": 0,
+            "rerank": 0,
+            "score": 0,
+            "pipeline": 0,
+            "models_download": 0,
+        }
+
+    def get_user_summary_range(
+        self, user_id: str, periods: list[str]
+    ) -> list[dict]:
+        """Get summary for multiple periods (e.g. last 30 days for charts)."""
+        if not periods:
+            return []
+        try:
+            resp = (
+                self._client.table("user_usage_summary")
+                .select("*")
+                .eq("user_id", user_id)
+                .in_("period", periods)
+                .execute()
+            )
+            return list(resp.data or [])
+        except Exception:
+            return []
 
 
 def get_usage_store():
