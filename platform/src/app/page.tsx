@@ -8,6 +8,13 @@ import { GridPattern } from '@/components/ui/grid-pattern'
 import { Logos3 } from '@/components/blocks/logos3'
 import { Feature } from '@/components/ui/feature-section-with-bento-grid'
 import { TypingAnimation } from '@/components/ui/typing-animation'
+import { Typewriter } from '@/components/ui/typewriter'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/radix-accordion'
 import { ArrowRight, Shield, Zap, Layers, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -125,7 +132,17 @@ export default function Home() {
                 variants={fadeIn}
                 className="font-serif text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance text-neutral-900"
               >
-                The training API for model verification.
+                <Typewriter
+                  words={[
+                    'The training API for model verification.',
+                    'Constraint-guaranteed outputs for production AI.',
+                    'Energy-based scoring for every LLM.',
+                  ]}
+                  speed={60}
+                  delayBetweenWords={2500}
+                  cursor={true}
+                  cursorChar="|"
+                />
               </motion.h1>
               <motion.p
                 variants={fadeIn}
@@ -335,6 +352,82 @@ export default function Home() {
                   </p>
                 </motion.a>
               ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="py-24 px-6 border-t border-neutral-100">
+          <div className="max-w-2xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6, ease: easeOutSmooth }}
+            >
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight font-mono">
+                Frequently asked questions
+              </h2>
+              <p className="text-neutral-500 mt-3">
+                Quick answers about Energy-Based Models and the API.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="mt-10"
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: easeOutSmooth }}
+            >
+              <Accordion
+                type="single"
+                defaultValue="item-1"
+                collapsible
+                className="w-full"
+              >
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>
+                    What are Energy-Based Models?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Energy-Based Models (EBMs) assign a scalar energy score to
+                    outputs. Lower energy means more reliable, constraint-satisfying
+                    behavior. They work alongside any LLM to verify, score, and
+                    rerank responses without retraining the base model.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-2">
+                  <AccordionTrigger>
+                    How is this different from prompt engineering?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Prompts are best-effort — they cannot guarantee outputs stay
+                    inside your policy. EBMs provide a separate scorer that
+                    verifies every response. You get constraint-guaranteed
+                    behavior on critical paths, not just guidelines.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-3">
+                  <AccordionTrigger>Is the API free to use?</AccordionTrigger>
+                  <AccordionContent>
+                    Get an API key to start. Usage is metered based on training
+                    and scoring volume. Check the platform dashboard for pricing
+                    and limits.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-4">
+                  <AccordionTrigger>
+                    Which language models are supported?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Any model. The EBM scorer operates independently of the
+                    base LLM — you can use GPT-4o, Claude, Llama, Mistral, or any
+                    provider. Swap models without rewriting your verification
+                    rules.
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </motion.div>
           </div>
         </section>

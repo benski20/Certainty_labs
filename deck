@@ -1,0 +1,72 @@
+# Gamma Pitch Deck Prompt: Certainty Labs
+
+Use this prompt in Gamma to generate a pitch deck for Certainty Labs. Copy the content below into Gamma's AI presentation creator.
+
+---
+
+## Prompt for Gamma
+
+Create a professional pitch deck for **Certainty Labs**, a startup that helps businesses get more reliable, trustworthy outputs from AI. Use a clean, modern design with an approachable, professional aesthetic. Write for a non-technical audience—avoid jargon, use analogies, and keep explanations simple.
+
+### Slide 1: Title
+- **Title:** Certainty Labs
+- **Subtitle:** Reliable AI Outputs You Can Trust
+- **Tagline:** The training API for model verification.
+
+### Slide 2: Problem
+- **Problem:** AI chatbots and assistants sometimes give wrong answers, make things up, or break your rules. Companies rely on hoping for the best—but when it matters (legal, healthcare, finance, customer support), you need better guarantees.
+- **Key pain:** Fixing this usually means retraining the whole AI from scratch. That's expensive, slow, and ties you to one vendor.
+
+### Slide 3: Solution
+- **Solution:** Certainty Labs trains a small "scorer" on your examples of good vs. bad outputs. That scorer then picks the best answer from multiple AI responses—without ever retraining your main AI.
+- **One-liner:** "You define what good looks like. We help you get it."
+
+### Slide 4: What Is an Energy-Based Model? (And Why It Matters)
+- **Simple explanation:** Think of it like a quality inspector. Instead of generating text itself, an energy-based model scores each answer like a "grade." Lower score (lower "energy") = better answer. It's like a judge that learns your standards from examples.
+- **Why use it instead of a traditional model?** Traditional models are built to generate text; they're big, expensive, and hard to customize. A scorer is built only to *evaluate* answers—it's fast, small, and easy to train on your own rules. You keep your main AI as-is and add a lightweight filter on top.
+- **Does it increase performance?** Yes. In tests, picking the best of several candidates (instead of just using the first one) often improves accuracy by a meaningful margin. The scorer learns to pick the answer that best matches your constraints—so you get fewer wrong answers and fewer rule violations.
+
+### Slide 5: How It Works
+- **Step 1:** Provide examples of good and bad AI outputs (or use our sample dataset to try it).
+- **Step 2:** Train a scorer in minutes. Your data teaches it what "good" looks like for your use case.
+- **Step 3:** Call our API anytime you need AI. We score multiple candidates and return the best one—in milliseconds.
+
+### Slide 6: Key Benefits
+- **Works with any AI:** GPT-4, Claude, Llama, Mistral—whatever you use. No vendor lock-in.
+- **No retraining:** Enforce your rules without changing your main AI. Add a scorer on top.
+- **Fast and lightweight:** The scorer trains in minutes and runs in milliseconds. No heavy infrastructure.
+- **Simple to use:** A few API calls—train, then rerank. That's it.
+
+### Slide 7: What You Get
+- **Guardrails on every call:** Attach our scorer to any AI endpoint so responses stay inside your policy.
+- **Operate across models:** Swap AI providers without changing your rules—the same scorer works with all of them.
+- **Observe every decision:** Log scores for every answer. Debug, audit, and improve with a single number.
+- **Ship with confidence:** Move from "hope for the best" to "get the best" on critical paths.
+
+### Slide 8: Platform & Integration
+- **Web platform:** Docs, API keys, billing, and usage dashboard. Everything in one place.
+- **Integration:** Python SDK and simple REST API. Train once, then rerank anytime.
+- **Security:** API key-based access. Usage tracked for billing and compliance.
+
+### Slide 9: Who It's For
+- **Customer support:** Ensure AI answers stay accurate and on-brand.
+- **Legal, healthcare, finance:** Enforce compliance and audit trails without retraining.
+- **Any team using AI:** Pick the best answer from multiple options—same scorer across any model.
+- **Product teams:** Log scores for every decision. Debug and tune with a single metric.
+
+### Slide 10: Traction & Roadmap
+- **Today:** Live API, SDK, web platform with docs, billing, and usage tracking. Core pipeline tested and deployed.
+- **Next:** Hosted API, usage-based billing, async training for large jobs.
+- **Later:** Data upload, model registry, published benchmarks.
+
+### Slide 11: Team / Ask
+- **Ask:** [Customize: e.g., "Seeking $X seed to build the hosted API and scale usage-based billing."]
+- **Contact:** [Add your contact info]
+
+---
+
+## Design Notes for Gamma
+- Use a neutral, professional color palette (dark grays, whites, subtle accent).
+- Include simple diagrams where helpful (e.g., "Your data → Scorer → Best answer").
+- Write for a non-technical audience: avoid jargon. Use analogies (e.g., "quality inspector," "judge").
+
