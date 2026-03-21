@@ -20,6 +20,7 @@ export function Typewriter({
   cursorChar = "|",
   className,
 }: TypewriterProps) {
+  const delayMs = delayBetweenWords
   const [displayText, setDisplayText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
   const [wordIndex, setWordIndex] = useState(0)
@@ -38,25 +39,25 @@ export function Typewriter({
             setDisplayText(currentWord.substring(0, charIndex + 1))
             setCharIndex(charIndex + 1)
           } else {
-            setTimeout(() => {
-              setIsDeleting(true)
-            }, delayBetweenWords)
+            setTimeout(() => setIsDeleting(true), delayMs)
           }
         } else {
           if (charIndex > 0) {
             setDisplayText(currentWord.substring(0, charIndex - 1))
             setCharIndex(charIndex - 1)
           } else {
-            setIsDeleting(false)
-            setWordIndex((prev) => (prev + 1) % words.length)
+            setTimeout(() => {
+              setIsDeleting(false)
+              setWordIndex((prev) => (prev + 1) % words.length)
+            }, delayMs)
           }
         }
       },
-      isDeleting ? speed / 2 : speed,
+      speed,
     )
 
     return () => clearTimeout(timeout)
-  }, [charIndex, currentWord, isDeleting, speed, delayBetweenWords, wordIndex, words])
+  }, [charIndex, currentWord, isDeleting, speed, delayMs, wordIndex, words])
 
   useEffect(() => {
     if (!cursor) return

@@ -132,16 +132,19 @@ export default function Home() {
                 variants={fadeIn}
                 className="font-serif text-4xl md:text-[2.75rem] leading-snug md:leading-snug font-semibold tracking-tight text-balance text-neutral-900"
               >
+                The training API for model{' '}
                 <Typewriter
                   words={[
-                    'The training API for model verification.',
-                    'Constraint-guaranteed outputs for production AI.',
-                    'Energy-based scoring for every LLM.',
+                    'verification.',
+                    'alignment.',
+                    'constraints.',
+                    'compliance.',
                   ]}
-                  speed={60}
-                  delayBetweenWords={2500}
+                  speed={55}
+                  delayBetweenWords={1250}
                   cursor={true}
                   cursorChar="|"
+                  className="inline-block min-w-[9ch]"
                 />
               </motion.h1>
               <motion.p
